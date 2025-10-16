@@ -200,17 +200,17 @@ void opcontrol() {
 	while (true) {
 		// Mode selection
 		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A))
-			drivetrain.set_opcontrol_mode(Drivetrain::OpControlMode::LEFT_ARCADE);
+			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::LEFT_ARCADE);
 		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B))
-			drivetrain.set_opcontrol_mode(Drivetrain::OpControlMode::RIGHT_ARCADE);
+			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::RIGHT_ARCADE);
 		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X))
-			drivetrain.set_opcontrol_mode(Drivetrain::OpControlMode::SPLIT_ARCADE);
+			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::SPLIT_ARCADE);
 		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y))
-			drivetrain.set_opcontrol_mode(Drivetrain::OpControlMode::TANK);
+			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::TANK);
 
-		pros::lcd::print(0, "Mode: %d", static_cast<int>(drivetrain.get_opcontrol_mode()));
+		pros::lcd::print(0, "Mode: %d", static_cast<int>(drivetrain.getOpcontrolMode()));
 
-		drivetrain.opcontrol_loop(master);
+		drivetrain.opcontrolLoop(master);
 		pros::delay(20);
 	}
 }

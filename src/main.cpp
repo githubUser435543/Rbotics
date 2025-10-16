@@ -8,39 +8,30 @@
  */
 
 
+const double pi = 3.1415926535;
 
 class Drivetrain {
-public:
-	pros::MotorGroup left_mg;
-	pros::MotorGroup right_mg;
-	pros::Imu inertial_sensor;
+private:
+	pros::MotorGroup left_mg = {1, -4, -5};
+	pros::MotorGroup right_mg = {-2, 3, 6};
+	pros::Imu inertial_sensor = 7;
+	const double wheel_diameter = 3.25;
+	const double ticks_per_rev = 600.0;
 
+public:
 	enum class OpControlMode { LEFT_ARCADE, RIGHT_ARCADE, SPLIT_ARCADE, TANK };
 	OpControlMode opcontrol_mode = OpControlMode::SPLIT_ARCADE;
 
-	// Default constructor
-	Drivetrain()
-
-	//pros::MotorGroup left_mg({1, -4, -5});
-	//pros::MotorGroup right_mg({-2, 3, 6});
-		: left_mg({1, -4, -5}),
-		  right_mg({-2, 3, 6}),
-		  inertial_sensor(7) {}
-
-
-	void set_opcontrol_mode(OpControlMode mode) {
+	void setOpcontrolMode(OpControlMode mode) {
 		opcontrol_mode = mode;
 	}
 
-	OpControlMode get_opcontrol_mode() const {
+	OpControlMode getOpcontrolMode() const {
 		return opcontrol_mode;
 	}
 
 	// Move forward a given distance (in inches)
-	void move_forward(double inches, int velocity = 100) {
-		const double wheel_diameter = 4.0; // inches
-		const double pi = 3.1415926535;
-		const double ticks_per_rev = 900.0; // adjust for your motor/gearbox
+	void moveForward(double inches, int velocity = 100) {
 		double revs = inches / (pi * wheel_diameter);
 		int ticks = static_cast<int>(revs * ticks_per_rev);
 
@@ -58,8 +49,8 @@ public:
 	}
 
 	// Turn a given number of degrees (positive = right, negative = left)
-	void turn_degrees(double degrees, int velocity = 100) {
-		inertial_sensor.tare_rotation();
+	void turnDegrees(double degrees, int velocity = 100) {
+		inertial_sensor.tare_rotation(); //! Not sure if we are using rotation or heading
 		double target = degrees;
 		int direction = (degrees > 0) ? 1 : -1;
 
@@ -74,7 +65,7 @@ public:
 	}
 
 	// Opcontrol loop method
-	void opcontrol_loop(pros::Controller& controller) {
+	void opcontrolLoop(pros::Controller& controller) {
 		int left = 0, right = 0;
 		switch (opcontrol_mode) {
 			case OpControlMode::LEFT_ARCADE: {

@@ -23,10 +23,23 @@ private:
 	const int outSpeed = 30;
 	const double wheel_diameter = 3.25;
 	const double ticks_per_rev = 600.0;
+	bool intakeState = false;
+	bool outtakeState = false;
 
 public:
 	enum class OpControlMode { LEFT_ARCADE, RIGHT_ARCADE, SPLIT_ARCADE, TANK };
 	OpControlMode opcontrol_mode = OpControlMode::SPLIT_ARCADE;
+
+	void moveOutakeArm() {
+		outtakeArm.set_value(!outtakeState);
+		outtakeState = !outtakeState;
+	}
+
+	void moveIntakeArm() {
+		intakeArm.set_value(!intakeState);
+		intakeState = !intakeState;
+	}
+	
 
 	void startRunningIntake(int velocity) {
 		intake.move(velocity);

@@ -162,7 +162,15 @@ void competition_initialize() {}
  * from where it left off.
  */
 void autonomous() {
-	//TODO: define IMU and intake motor
+	//* PATH PLANNING
+	// Orient bot facing two blocks on side
+	// Go forward around 1.5 squares
+	// Turn towards loader
+	// Move towards loader
+	// Do intake
+	// Back a little
+	// Turn 180
+	// Forward and score
 	pros::MotorGroup left_mg({1, -4, -5});
 	pros::MotorGroup right_mg({-2, 3, 6});
 	pros::Motor intake(7);

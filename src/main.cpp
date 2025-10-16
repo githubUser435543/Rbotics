@@ -195,7 +195,7 @@ void autonomous() {
 	//* PATH PLANNING
 	// Orient bot facing two blocks on side
 	drivetrain.moveForward(18, velocity); // Go forward around 1.5 squares
-	drivetrain.turnDegrees(turn_velocity); // Turn towards loader
+	drivetrain.turnDegrees(10); // Turn towards loader
 	drivetrain.moveForward(1); // Move towards loader
 	// Do intake
 	// Back a little
@@ -238,6 +238,8 @@ void opcontrol() {
 		bool r2 = master.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
 		bool l1 = master.get_digital(pros::E_CONTROLLER_DIGITAL_L1);
 		bool l2 = master.get_digital(pros::E_CONTROLLER_DIGITAL_L2);
+		bool x = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X);
+		bool b = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B);
 
 
 		if (r1) {
@@ -257,9 +259,13 @@ void opcontrol() {
 			drivetrain.stopOuttake();
 		}
 
-		if (master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
+		if (x) {
+			drivetrain.moveOutakeArm();
 		}
 
+		if (b) {
+			drivetrain.moveIntakeArm();
+		}
 
 		pros::lcd::print(0, "Mode: %d", static_cast<int>(drivetrain.getOpcontrolMode()));
 

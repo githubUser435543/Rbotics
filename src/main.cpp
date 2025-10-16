@@ -15,12 +15,25 @@ private:
 	pros::MotorGroup left_mg = {1, -4, -5};
 	pros::MotorGroup right_mg = {-2, 3, 6};
 	pros::Imu inertial_sensor = 7;
+	pros::Motor intake = 8;
+	pros::Motor outtake = 9;
 	const double wheel_diameter = 3.25;
 	const double ticks_per_rev = 600.0;
 
 public:
 	enum class OpControlMode { LEFT_ARCADE, RIGHT_ARCADE, SPLIT_ARCADE, TANK };
 	OpControlMode opcontrol_mode = OpControlMode::SPLIT_ARCADE;
+
+	void runIntake(int velocity) {
+		intake.move(30);
+		pros::delay(4000);
+		intake.brake();
+	}
+	void runOuttake(int velocity) {
+		outtake.move(30);
+		pros::delay(4000);
+		outtake.brake();
+	}
 
 	void setOpcontrolMode(OpControlMode mode) {
 		opcontrol_mode = mode;
@@ -154,27 +167,18 @@ void competition_initialize() {}
  */
 void autonomous() {
 	//* PATH PLANNING
+	Drivetrain drivetrain;
+	const int velocity = 30; 
+	const int turn_velocity = 30;
+	//* PATH PLANNING
 	// Orient bot facing two blocks on side
-	// Go forward around 1.5 squares
-	// Turn towards loader
-	// Move towards loader
+	drivetrain.moveForward(18, velocity); // Go forward around 1.5 squares
+	drivetrain.turnDegrees(turn_velocity); // Turn towards loader
+	drivetrain.moveForward(1); // Move towards loader
 	// Do intake
 	// Back a little
 	// Turn 180
 	// Forward and score
-	pros::MotorGroup left_mg({1, -4, -5});
-	pros::MotorGroup right_mg({-2, 3, 6});
-	pros::Motor intake(7);
-	pros::Motor piston(8);
-	pros::Imu inertial_sensor(9);
-
-
-
-	left_mg.move(20);
-	right_mg.move(20);
-	pros::delay(4000);
-	left_mg.move(0);
-	right_mg.move(0);
 }
 
 /**

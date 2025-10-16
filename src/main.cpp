@@ -17,35 +17,42 @@ private:
 	pros::Imu inertial_sensor = 7;
 	pros::Motor intake = 8;
 	pros::Motor outtake = 9;
-	pros::ADIAnalogOut intakeArm = pros::ADIAnalogOut('A');
-	pros::ADIAnalogOut outtakeArm = pros::ADIAnalogOut('B');
-	const int intakeSpeed = 30;
-	const int outSpeed = 30;
+	pros::adi::Pneumatics intakeArm = pros::adi::Pneumatics('A', false);
+	pros::adi::Pneumatics outtakeArm = pros::adi::Pneumatics('B', false);
+	//pros::ADIDigitalOut outtakeArm = pros::adi::Pneumatics('B');
+	const int intakeSpeed = 120;
+	const int outSpeed = 120;
 	const double wheel_diameter = 3.25;
 	const double ticks_per_rev = 600.0;
-	bool intakeState = false;
-	bool outtakeState = false;
+	bool intakeState = 0;
+	bool outtakeState = 0;
 
 public:
 	enum class OpControlMode { LEFT_ARCADE, RIGHT_ARCADE, SPLIT_ARCADE, TANK };
 	OpControlMode opcontrol_mode = OpControlMode::SPLIT_ARCADE;
 
 	void moveOutakeArm() {
-		outtakeArm.set_value(!outtakeState);
-		outtakeState = !outtakeState;
+		bool extended = outtakeArm.is_extended();
+		if (extended)
+			outtakeArm.retract();
+		else
+			outtakeArm.extend();
 	}
 
 	void moveIntakeArm() {
-		intakeArm.set_value(!intakeState);
-		intakeState = !intakeState;
+		bool extended = intakeArm.is_extended();
+		if (extended)
+			intakeArm.retract();
+		else
+			intakeArm.extend();
 	}
 	
 
 	void startRunningIntake(int velocity) {
-		intake.move(velocity);
+		intake.move(intakeSpeed);
 	}
 	void startRunningOuttake(int velocity) {
-		outtake.move(velocity);
+		outtake.move(outSpeed);
 	}
 
 	void stopIntake() {
@@ -156,6 +163,7 @@ void initialize() {
 	pros::lcd::set_text(1, "Hello PROS User!");
 
 	pros::lcd::register_btn1_cb(on_center_button);
+	opcontrol();
 }
 
 /**
@@ -195,7 +203,7 @@ void autonomous() {
 	//* PATH PLANNING
 	// Orient bot facing two blocks on side
 	drivetrain.moveForward(18, velocity); // Go forward around 1.5 squares
-	drivetrain.turnDegrees(10); // Turn towards loader
+	drivetrain.turnDegrees(1); // Turn towards loader
 	drivetrain.moveForward(1); // Move towards loader
 	// Do intake
 	// Back a little

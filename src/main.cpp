@@ -17,6 +17,10 @@ private:
 	pros::Imu inertial_sensor = 7;
 	pros::Motor intake = 8;
 	pros::Motor outtake = 9;
+	pros::ADIAnalogOut intakeArm = pros::ADIAnalogOut('A');
+	pros::ADIAnalogOut outtakeArm = pros::ADIAnalogOut('B');
+	const int intakeSpeed = 30;
+	const int outSpeed = 30;
 	const double wheel_diameter = 3.25;
 	const double ticks_per_rev = 600.0;
 
@@ -24,14 +28,18 @@ public:
 	enum class OpControlMode { LEFT_ARCADE, RIGHT_ARCADE, SPLIT_ARCADE, TANK };
 	OpControlMode opcontrol_mode = OpControlMode::SPLIT_ARCADE;
 
-	void runIntake(int velocity) {
-		intake.move(30);
-		pros::delay(4000);
+	void startRunningIntake(int velocity) {
+		intake.move(velocity);
+	}
+	void startRunningOuttake(int velocity) {
+		outtake.move(velocity);
+	}
+
+	void stopIntake() {
 		intake.brake();
 	}
-	void runOuttake(int velocity) {
-		outtake.move(30);
-		pros::delay(4000);
+
+	void stopOuttake() {
 		outtake.brake();
 	}
 
@@ -78,6 +86,7 @@ public:
 	}
 
 	// Opcontrol loop method
+	// The actual loop is opcontrol(), this is just called within it
 	void opcontrolLoop(pros::Controller& controller) {
 		int left = 0, right = 0;
 		switch (opcontrol_mode) {
@@ -203,16 +212,45 @@ void opcontrol() {
 
 	while (true) {
 		// Mode selection
-		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A))
+		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT))
 			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::LEFT_ARCADE);
-		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B))
+		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN))
 			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::RIGHT_ARCADE);
-		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X))
+		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP))
 			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::SPLIT_ARCADE);
-		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y))
+		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT))
 			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::TANK);
 
+		bool r1 = master.get_digital(pros::E_CONTROLLER_DIGITAL_R1);
+		bool r2 = master.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
+		bool l1 = master.get_digital(pros::E_CONTROLLER_DIGITAL_L1);
+		bool l2 = master.get_digital(pros::E_CONTROLLER_DIGITAL_L2);
+
+
+		if (r1) {
+			drivetrain.startRunningIntake(-30);
+			drivetrain.startRunningOuttake(30);
+		} else if (r2){
+			drivetrain.startRunningIntake(30);
+			drivetrain.startRunningOuttake(-30);
+		} else if (l1) {
+			drivetrain.startRunningIntake(-30);
+			drivetrain.stopOuttake();
+		} else if (l2){
+			drivetrain.startRunningIntake(30);
+			drivetrain.stopOuttake();
+		} else {
+			drivetrain.stopIntake();
+			drivetrain.stopOuttake();
+		}
+
+		if (master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
+		}
+
+
 		pros::lcd::print(0, "Mode: %d", static_cast<int>(drivetrain.getOpcontrolMode()));
+
+
 
 		drivetrain.opcontrolLoop(master);
 		pros::delay(20);

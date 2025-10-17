@@ -19,7 +19,7 @@ private:
 	pros::Motor outtake = 9;
 	pros::adi::Pneumatics intakeArm = pros::adi::Pneumatics('A', false);
 	pros::adi::Pneumatics outtakeArm = pros::adi::Pneumatics('B', false);
-	//pros::ADIDigitalOut outtakeArm = pros::adi::Pneumatics('B');
+
 	const int intakeSpeed = 120;
 	const int outSpeed = 120;
 	const double wheel_diameter = 3.25;
@@ -48,11 +48,18 @@ public:
 	}
 	
 
-	void startRunningIntake(int velocity) {
+	void startRunningIntake() {
 		intake.move(intakeSpeed);
 	}
-	void startRunningOuttake(int velocity) {
+	void startRunningIntake(int voltage) {
+		intake.move(voltage);
+	}
+
+	void startRunningOuttake() {
 		outtake.move(outSpeed);
+	}
+	void startRunningOuttake(int voltage) {
+		outtake.move(voltage);
 	}
 
 	void stopIntake() {
@@ -251,16 +258,16 @@ void opcontrol() {
 
 
 		if (r1) {
-			drivetrain.startRunningIntake(-30);
-			drivetrain.startRunningOuttake(30);
+			drivetrain.startRunningIntake();
+			drivetrain.startRunningOuttake();
 		} else if (r2){
-			drivetrain.startRunningIntake(30);
-			drivetrain.startRunningOuttake(-30);
+			drivetrain.startRunningIntake();
+			drivetrain.startRunningOuttake();
 		} else if (l1) {
-			drivetrain.startRunningIntake(-30);
+			drivetrain.startRunningIntake();
 			drivetrain.stopOuttake();
 		} else if (l2){
-			drivetrain.startRunningIntake(30);
+			drivetrain.startRunningIntake();
 			drivetrain.stopOuttake();
 		} else {
 			drivetrain.stopIntake();
@@ -275,9 +282,7 @@ void opcontrol() {
 			drivetrain.moveIntakeArm();
 		}
 
-		pros::lcd::print(0, "Mode: %d", static_cast<int>(drivetrain.getOpcontrolMode()));
-
-
+		pros::lcd::print(0 /*line*/, "Mode: %d", static_cast<int>(drivetrain.getOpcontrolMode()));
 
 		drivetrain.opcontrolLoop(master);
 		pros::delay(20);

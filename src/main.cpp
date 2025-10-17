@@ -279,7 +279,7 @@ void opcontrol() {
 			drivetrain.startRunningIntake();
 			drivetrain.stopOuttake();
 		} else if (l2){
-			drivetrain.startRunningIntake();
+			drivetrain.startRunningIntake(false);
 			drivetrain.stopOuttake();
 		} else {
 			drivetrain.stopIntake();

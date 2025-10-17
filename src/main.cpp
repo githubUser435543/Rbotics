@@ -31,17 +31,6 @@ public:
 	enum class OpControlMode { LEFT_ARCADE, RIGHT_ARCADE, SPLIT_ARCADE, TANK };
 	OpControlMode opcontrol_mode = OpControlMode::SPLIT_ARCADE;
 
-	void getInertialReading() {
-		double heading = inertial_sensor.get_heading();
-		double rotation = inertial_sensor.get_rotation();
-		double pitch = inertial_sensor.get_pitch();
-		double roll = inertial_sensor.get_roll();
-		pros::lcd::print(2, "Heading: %.2f", heading);
-		pros::lcd::print(3, "Rotation: %.2f", rotation);
-		pros::lcd::print(4, "Pitch: %.2f", pitch);
-		pros::lcd::print(5, "Roll: %.2f", roll);
-	}
-
 	void moveOutakeArm() {
 		bool extended = outtakeArm.is_extended();
 		if (extended)
@@ -101,18 +90,7 @@ public:
 		return opcontrol_mode;
 	}
 
-	
-	/**
-	 * @brief Moves the robot forward by a specified distance in inches.
-	 *
-	 * Calculates the required motor ticks based on the wheel diameter and encoder resolution,
-	 * then commands both left and right motors to move the calculated distance at the given velocity.
-	 * The function blocks until both motors reach the target position within a tolerance.
-	 * Motors are braked at the end of the movement.
-	 *
-	 * @param inches Distance to move forward in inches.
-	 * @param velocity Motor velocity (default is 100).
-	 */
+	// Move forward a given distance (in inches)
 	void moveForward(double inches, int velocity = 100) {
 		double revs = inches / (pi * wheel_diameter);
 		int ticks = static_cast<int>(revs * ticks_per_rev);
@@ -130,19 +108,7 @@ public:
 		right_mg.brake();
 	}
 
-
-	/**
-	 * @brief Turns the robot by a specified number of degrees using the inertial sensor.
-	 *
-	 * This function commands the left and right motors to rotate the robot until the inertial sensor
-	 * detects that the desired rotation (in degrees) has been achieved. The motors are driven in
-	 * opposite directions to facilitate turning. The function uses a default velocity of 100 if none
-	 * is specified. The turn is considered complete when the robot's rotation is within 2 degrees of
-	 * the target.
-	 *
-	 * @param degrees The number of degrees to turn. Positive values turn right, negative values turn left.
-	 * @param velocity The speed at which to turn (default is 100).
-	 */
+	// Turn a given number of degrees (positive = right, negative = left)
 	void turnDegrees(double degrees, int velocity = 100) {
 		inertial_sensor.tare_rotation(); //! Not sure if we are using rotation or heading
 		double target = degrees;
@@ -158,20 +124,8 @@ public:
 		right_mg.brake();
 	}
 
-	/**
-	 * @brief Processes controller input and sets motor outputs based on the selected operator control mode.
-	 *
-	 * This function reads analog stick values from the provided controller and calculates
-	 * the left and right motor outputs according to the current `opcontrol_mode`. Supported modes:
-	 * - LEFT_ARCADE: Uses left stick for both direction and turning.
-	 * - RIGHT_ARCADE: Uses right stick for both direction and turning.
-	 * - SPLIT_ARCADE: Uses left stick for direction and right stick for turning.
-	 * - TANK: Uses left stick for left motors and right stick for right motors.
-	 *
-	 * The calculated motor values are then sent to the left and right motor groups.
-	 *
-	 * @param controller Reference to the pros::Controller object for reading input.
-	 */
+	// Opcontrol loop method
+	// The actual loop is opcontrol(), this is just called within it
 	void opcontrolLoop(pros::Controller& controller) {
 		int left = 0, right = 0;
 		switch (opcontrol_mode) {
@@ -295,6 +249,7 @@ void autonomous() {
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
 	Drivetrain drivetrain;
+
 	while (true) {
 		// Mode selection
 		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT))
@@ -324,7 +279,7 @@ void opcontrol() {
 			drivetrain.startRunningIntake();
 			drivetrain.stopOuttake();
 		} else if (l2){
-			drivetrain.startRunningIntake(true);
+			drivetrain.startRunningIntake();
 			drivetrain.stopOuttake();
 		} else {
 			drivetrain.stopIntake();
@@ -340,9 +295,31 @@ void opcontrol() {
 		}
 
 		pros::lcd::print(0 /*line*/, "Mode: %d", static_cast<int>(drivetrain.getOpcontrolMode()));
-		drivetrain.getInertialReading();
 
 		drivetrain.opcontrolLoop(master);
 		pros::delay(20);
 	}
 }
+
+/*
+void opcontrol() {
+	pros::Controller master(pros::E_CONTROLLER_MASTER);
+	pros::MotorGroup left_mg({1, -2, 3});    // Creates a motor group with forwards ports 1 & 3 and reversed port 2
+	pros::MotorGroup right_mg({-4, 5, -6});  // Creates a motor group with forwards port 5 and reversed ports 4 & 6
+
+
+	while (true) {
+		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
+		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
+		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);  // Prints status of the emulated screen LCDs
+
+		// Arcade control scheme
+
+		int dir = master.get_analog(ANALOG_LEFT_Y);    // Gets amount forward/backward from left joystick
+		int turn = master.get_analog(ANALOG_RIGHT_X);  // Gets the turn left/right from right joystick
+		left_mg.move(dir - turn);                      // Sets left motor voltage
+		right_mg.move(dir + turn);                     // Sets right motor voltage
+		pros::delay(20);                               // Run for 20 ms then update
+	}
+}
+*/

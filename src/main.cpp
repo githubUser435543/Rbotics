@@ -20,12 +20,12 @@ private:
 	pros::adi::Pneumatics intakeArm = pros::adi::Pneumatics('A', false);
 	pros::adi::Pneumatics outtakeArm = pros::adi::Pneumatics('B', false);
 
-	const int intakeSpeed = 120;
-	const int outSpeed = 120;
+	const int intake_voltage = 120;
+	const int outtake_voltage = -120;
 	const double wheel_diameter = 3.25;
 	const double ticks_per_rev = 600.0;
-	bool intakeState = 0;
-	bool outtakeState = 0;
+	bool intake_state = 0;
+	bool outtake_state = 0;
 
 public:
 	enum class OpControlMode { LEFT_ARCADE, RIGHT_ARCADE, SPLIT_ARCADE, TANK };
@@ -49,17 +49,29 @@ public:
 	
 
 	void startRunningIntake() {
-		intake.move(intakeSpeed);
+		intake.move(intake_voltage);
 	}
 	void startRunningIntake(int voltage) {
 		intake.move(voltage);
 	}
+	void startRunningIntake(bool reversed) {
+		if (reversed)
+			intake.move(-intake_voltage);
+		else
+			intake.move(intake_voltage);
+	}
 
 	void startRunningOuttake() {
-		outtake.move(outSpeed);
+		outtake.move(outtake_voltage);
 	}
 	void startRunningOuttake(int voltage) {
 		outtake.move(voltage);
+	}
+	void startRunningOuttake(bool reversed) {
+		if (reversed)
+			outtake.move(-outtake_voltage);
+		else
+			outtake.move(outtake_voltage);
 	}
 
 	void stopIntake() {
@@ -261,8 +273,8 @@ void opcontrol() {
 			drivetrain.startRunningIntake();
 			drivetrain.startRunningOuttake();
 		} else if (r2){
-			drivetrain.startRunningIntake();
-			drivetrain.startRunningOuttake();
+			drivetrain.startRunningIntake(true);
+			drivetrain.startRunningOuttake(true);
 		} else if (l1) {
 			drivetrain.startRunningIntake();
 			drivetrain.stopOuttake();

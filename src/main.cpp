@@ -20,6 +20,8 @@ private:
 	pros::adi::Pneumatics intakeArm = pros::adi::Pneumatics('A', false);
 	pros::adi::Pneumatics outtakeArm = pros::adi::Pneumatics('B', false);
 
+	const int forwardVolatage = 30;
+	const int turnVoltage = 30;
 	const int intake_voltage = 120;
 	const int outtake_voltage = -120;
 	const double wheel_diameter = 3.25;
@@ -30,6 +32,14 @@ private:
 public:
 	enum class OpControlMode { LEFT_ARCADE, RIGHT_ARCADE, SPLIT_ARCADE, TANK };
 	OpControlMode opcontrol_mode = OpControlMode::SPLIT_ARCADE;
+
+	void moveMotors() {
+		left_mg.move(forwardVolatage);
+		right_mg.move(forwardVolatage);
+		pros::delay(500);
+		left_mg.brake();
+		right_mg.brake();
+	}
 
 	void moveOutakeArm() {
 		bool extended = outtakeArm.is_extended();
@@ -91,19 +101,16 @@ public:
 	}
 
 	// Move forward a given distance (in inches)
-	void moveForward(double inches, int velocity = 100) {
+	void moveForward(double inches) {
 		double revs = inches / (pi * wheel_diameter);
 		int ticks = static_cast<int>(revs * ticks_per_rev);
 
 		left_mg.tare_position();
 		right_mg.tare_position();
 
-		left_mg.move_absolute(ticks, velocity);
-		right_mg.move_absolute(ticks, velocity);
+		left_mg.move_absolute(ticks, forwardVolatage);
+		right_mg.move_absolute(ticks, forwardVolatage);
 
-		while (fabs(left_mg.get_position() - ticks) > 10 || fabs(right_mg.get_position() - ticks) > 10) {
-			pros::delay(10);
-		}
 		left_mg.brake();
 		right_mg.brake();
 	}
@@ -131,23 +138,23 @@ public:
 		switch (opcontrol_mode) {
 			case OpControlMode::LEFT_ARCADE: {
 				int dir = controller.get_analog(ANALOG_LEFT_Y);
-				int turn = controller.get_analog(ANALOG_LEFT_X);
-				left = dir - turn;
-				right = dir + turn;
+				int turn = 0.5 * controller.get_analog(ANALOG_LEFT_X);
+				left = dir + turn;
+				right = dir - turn;
 				break;
 			}
 			case OpControlMode::RIGHT_ARCADE: {
 				int dir = controller.get_analog(ANALOG_RIGHT_Y);
 				int turn = controller.get_analog(ANALOG_RIGHT_X);
-				left = dir - turn;
-				right = dir + turn;
+				left = dir + turn;
+				right = dir - turn;
 				break;
 			}
 			case OpControlMode::SPLIT_ARCADE: {
 				int dir = controller.get_analog(ANALOG_LEFT_Y);
-				int turn = controller.get_analog(ANALOG_RIGHT_X);
-				left = dir - turn;
-				right = dir + turn;
+				int turn = 0.5 * controller.get_analog(ANALOG_RIGHT_X);
+				left = dir + turn;
+				right = dir - turn;
 				break;
 			}
 			case OpControlMode::TANK: {
@@ -179,10 +186,8 @@ public:
  */
 void initialize() {
 	pros::lcd::initialize();
-	pros::lcd::set_text(1, "Hello PROS User!");
-
+	
 	pros::lcd::register_btn1_cb(on_center_button);
-	opcontrol();
 }
 
 /**
@@ -214,16 +219,19 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
+
+
 void autonomous() {
 	//* PATH PLANNING
 	Drivetrain drivetrain;
-	const int velocity = 30; 
-	const int turn_velocity = 30;
-	//* PATH PLANNING
 	// Orient bot facing two blocks on side
-	drivetrain.moveForward(18, velocity); // Go forward around 1.5 squares
-	drivetrain.turnDegrees(1); // Turn towards loader
-	drivetrain.moveForward(1); // Move towards loader
+	pros::delay(10000);
+	drivetrain.moveMotors(); //! allow auton win point rm later
+	
+	 // Go forward around 1.5 squares
+
+	 // Turn towards loader
+	 // Move towards loader
 	// Do intake
 	// Back a little
 	// Turn 180
@@ -252,6 +260,7 @@ void opcontrol() {
 
 	while (true) {
 		// Mode selection
+		/*
 		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT))
 			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::LEFT_ARCADE);
 		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN))
@@ -260,7 +269,7 @@ void opcontrol() {
 			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::SPLIT_ARCADE);
 		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT))
 			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::TANK);
-
+		*/
 		bool r1 = master.get_digital(pros::E_CONTROLLER_DIGITAL_R1);
 		bool r2 = master.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
 		bool l1 = master.get_digital(pros::E_CONTROLLER_DIGITAL_L1);
@@ -270,16 +279,16 @@ void opcontrol() {
 
 
 		if (r1) {
-			drivetrain.startRunningIntake();
-			drivetrain.startRunningOuttake();
-		} else if (r2){
 			drivetrain.startRunningIntake(true);
 			drivetrain.startRunningOuttake(true);
-		} else if (l1) {
+		} else if (r2){
 			drivetrain.startRunningIntake();
+			drivetrain.startRunningOuttake();
+		} else if (l1) {
+			drivetrain.startRunningIntake(true);
 			drivetrain.stopOuttake();
 		} else if (l2){
-			drivetrain.startRunningIntake(true);
+			drivetrain.startRunningIntake();
 			drivetrain.stopOuttake();
 		} else {
 			drivetrain.stopIntake();

@@ -115,13 +115,26 @@ public:
 		right_mg.brake();
 	}
 
-	// Turn a given number of degrees (positive = right, negative = left)
 	void turnDegrees(double target_in_degrees, double kP = 0.1, double kI = 0.0, double kD = 0.0) {
+		double error = target_in_degrees;
+		double previous_error = error;
+		double integral = 0.0;
+		double derivative = 0.0;
+		double rotation = 0.0;
+		int left_voltage = 0;
+		int right_voltage = 0;
+
 		inertial_sensor.tare_rotation();
-
-		double error = target_in_degrees - inertial_sensor.get_rotation();
-			
-
+		while (fabs(error) > 3.0) {
+			rotation = inertial_sensor.get_rotation();
+			previous_error = error;
+			error = target_in_degrees - rotation;
+			integral += error;
+			derivative = error - previous_error;
+			left_voltage = (int)(kP * error + kI * integral + kD * derivative);
+			right_voltage = -(int)(kP * error + kI * integral + kD * derivative);
+			pros::delay(10);
+		}
 		left_mg.brake();
 		right_mg.brake();
 	}

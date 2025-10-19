@@ -9,7 +9,7 @@
 
 
 const double pi = 3.1415926535;
-
+enum class ControlConstant {KP, KI, KD};
 class Drivetrain {
 private:
 	pros::MotorGroup left_mg = {1, -4, -5};
@@ -115,7 +115,7 @@ public:
 		right_mg.brake();
 	}
 
-	void turnDegrees(double target_in_degrees, double kP = 0.1, double kI = 0.0, double kD = 0.0) {
+	void turn(double target_in_degrees, double kP = 0.1, double kI = 0.0, double kD = 0.0) {
 		double error = target_in_degrees;
 		double previous_error = error;
 		double integral = 0.0;
@@ -228,6 +228,53 @@ void competition_initialize() {}
  * from where it left off.
  */
 
+void testPid(Drivetrain& drivetrain, double target_distance) {
+	pros::Controller master = pros::Controller(pros::E_CONTROLLER_MASTER);
+	double k_p = 0.1;
+	double k_i = 0.0;
+	double k_d = 0.0;
+	int b = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B);
+	int up = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP);
+	int down = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN);
+	int left = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT);
+	int right = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT);
+
+	ControlConstant selected = ControlConstant::KP;
+	master.clear();
+	while (!b){
+		if (left){
+			selected = (selected == ControlConstant::KP) ? ControlConstant::KD : (ControlConstant)((int)selected - 1);
+		} else if (right){
+			selected = (selected == ControlConstant::KD) ? ControlConstant::KP : (ControlConstant)((int)selected + 1);
+		}
+
+		switch (selected){
+			case ControlConstant::KP: {
+				if (up) k_p += 0.1;
+				else if (down) k_p -= 0.1;
+				break;
+			}
+			case ControlConstant::KI: {
+				if (up) k_i += 0.05;
+				else if (down) k_i -= 0.05;
+				break;
+			}
+			case ControlConstant::KD: {
+				if (up) k_d += 0.05;
+				else if (down) k_d -= 0.05;
+				break;
+			}
+		}
+
+		std::string p_prefix = (selected == ControlConstant::KP) ? "*" : "";
+		std::string i_prefix = (selected == ControlConstant::KI) ? "*" : "";
+		std::string d_prefix = (selected == ControlConstant::KD) ? "*" : "";
+		master.print(0, 0, "%skP: %.1f" , p_prefix, k_p);
+		master.print(1, 0, "%skI: %.2f", i_prefix, k_i);
+		master.print(2, 0, "%skD: %.2f", d_prefix, k_d);
+	}
+	drivetrain.turn(target_distance, k_p, k_i, k_d);
+}
 
 void autonomous() {
 	//* PATH PLANNING

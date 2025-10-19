@@ -116,17 +116,12 @@ public:
 	}
 
 	// Turn a given number of degrees (positive = right, negative = left)
-	void turnDegrees(double degrees, int velocity = 100) {
-		inertial_sensor.tare_rotation(); //! Not sure if we are using rotation or heading
-		double target = degrees;
-		int direction = (degrees > 0) ? 1 : -1;
+	void turnDegrees(double target_in_degrees, double kP = 0.1, double kI = 0.0, double kD = 0.0) {
+		inertial_sensor.tare_rotation();
 
-		left_mg.move(direction * velocity);
-		right_mg.move(-direction * velocity);
+		double error = target_in_degrees - inertial_sensor.get_rotation();
+			
 
-		while (fabs(inertial_sensor.get_rotation() - target) > 2) {
-			pros::delay(10);
-		}
 		left_mg.brake();
 		right_mg.brake();
 	}
@@ -225,8 +220,6 @@ void autonomous() {
 	//* PATH PLANNING
 	Drivetrain drivetrain;
 	// Orient bot facing two blocks on side
-	pros::delay(10000);
-	drivetrain.moveMotors(); //! allow auton win point rm later
 	
 	 // Go forward around 1.5 squares
 

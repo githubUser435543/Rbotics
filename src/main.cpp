@@ -240,8 +240,13 @@ void testPid(Drivetrain& drivetrain, double target_distance) {
 	int right = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT);
 
 	ControlConstant selected = ControlConstant::KP;
-	master.clear();
 	while (!b){
+		b = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B);
+		up = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP);
+		down = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN);
+		left = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT);
+		right = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT);
+		master.clear();
 		if (left){
 			selected = (selected == ControlConstant::KP) ? ControlConstant::KD : (ControlConstant)((int)selected - 1);
 		} else if (right){
@@ -279,6 +284,7 @@ void testPid(Drivetrain& drivetrain, double target_distance) {
 void autonomous() {
 	//* PATH PLANNING
 	Drivetrain drivetrain;
+	testPid(drivetrain, 90);
 	// Orient bot facing two blocks on side
 	
 	 // Go forward around 1.5 squares

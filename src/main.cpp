@@ -1,121 +1,181 @@
 #include "main.h"
-// ...existing code...
-/**
- * A callback function for LLEMU's center button.
- *
- * When this callback is fired, it will toggle line 2 of the LCD text between
- * "I was pressed!" and nothing.
- */
 
-
+//* ---------- GLOBAL VARIABLES ----------
 const double pi = 3.1415926535;
+//* ---------- GLOBAL ENUMS ----------
 enum class ControlConstant {KP, KI, KD};
+
+/*
+ * Drivetrain
+ * All values are initalized using default values and default constructor
+ * Can (and should) be initalized as: Drivetrain drivetrain;
+ * Not sure if multiple instances in the same scope is ok.
+ */
 class Drivetrain {
 private:
+	//* ---------- PROS INITALIZATION ----------
 	pros::MotorGroup left_mg = {1, -4, -5};
 	pros::MotorGroup right_mg = {-2, 3, 6};
 	pros::Imu inertial_sensor = 7;
 	pros::Motor intake = 8;
 	pros::Motor outtake = 9;
-	pros::adi::Pneumatics intakeArm = pros::adi::Pneumatics('A', false);
-	pros::adi::Pneumatics outtakeArm = pros::adi::Pneumatics('B', false);
+	pros::adi::Pneumatics intake_arm = pros::adi::Pneumatics('A', false);
+	pros::adi::Pneumatics outtake_elevator = pros::adi::Pneumatics('B', false);
 
-	const int forwardVolatage = 30;
-	const int turnVoltage = 30;
+
+	//* ---------- PRIMATIVE MEMBERS ----------
+	const int forward_voltage = 50;
+	const int turn_voltage = 40;
 	const int intake_voltage = 120;
 	const int outtake_voltage = -120;
 	const double wheel_diameter = 3.25;
-	const double ticks_per_rev = 600.0;
-	bool intake_state = 0;
-	bool outtake_state = 0;
 
 public:
 	enum class OpControlMode { LEFT_ARCADE, RIGHT_ARCADE, SPLIT_ARCADE, TANK };
 	OpControlMode opcontrol_mode = OpControlMode::SPLIT_ARCADE;
 
-	void moveMotors() {
-		left_mg.move(forwardVolatage);
-		right_mg.move(forwardVolatage);
-		pros::delay(500);
-		left_mg.brake();
-		right_mg.brake();
+	/*
+	* Default constructor
+	* All members are set via default values, only configuration goes here
+	* Using setters here rather then configuring in constructors will hopefully combat PROS' constantly changing api
+	*/
+	Drivetrain(){
+		left_mg.set_encoder_units(pros::motor_encoder_units_e::E_MOTOR_ENCODER_DEGREES);
+		right_mg.set_encoder_units(pros::motor_encoder_units_e::E_MOTOR_ENCODER_DEGREES);
 	}
 
-	void moveOutakeArm() {
-		bool extended = outtakeArm.is_extended();
+	/*
+	* Moves the bot up if it is down and vice versa
+	* Returns true if successful and false if failed
+	*/
+	bool toggleBotHeight() {
+		const char success = 1;
+		bool extended = outtake_elevator.is_extended();
 		if (extended)
-			outtakeArm.retract();
+			return outtake_elevator.retract() == success;
 		else
-			outtakeArm.extend();
+			return outtake_elevator.extend() == success;
 	}
 
-	void moveIntakeArm() {
-		bool extended = intakeArm.is_extended();
+	/*
+	* Moves the intake arm up if is down and vice versa()
+	* Returns true if successful and false if failed
+	*/
+	bool moveIntakeArm() {
+		const char success = 1;
+		bool extended = intake_arm.is_extended();
 		if (extended)
-			intakeArm.retract();
+			return intake_arm.retract() == success;
 		else
-			intakeArm.extend();
+			return intake_arm.extend() == success;
 	}
 	
 
-	void startRunningIntake() {
-		intake.move(intake_voltage);
-	}
-	void startRunningIntake(int voltage) {
-		intake.move(voltage);
-	}
-	void startRunningIntake(bool reversed) {
+
+	/*
+	* Runs intake at default voltage, with a optional boolean parameter to reverse the direction
+	*/
+	void startRunningIntake(bool reversed = false) {
 		if (reversed)
 			intake.move(-intake_voltage);
 		else
 			intake.move(intake_voltage);
 	}
+	/*
+	* Voltage overload, sets intake voltage, should be from -127 to 127 inclusive
+	* If voltage is out of bounds it will be set to the closest value.
+	* Set negative voltage to reverse
+	*/
+	void startRunningIntake(int voltage) {
+		int voltage_low_bound = -127;
+		int voltage_high_bound = 127;
+		int valid_voltage = std::clamp(voltage, voltage_low_bound, voltage_high_bound);
+		intake.move(valid_voltage);
+	}
 
-	void startRunningOuttake() {
-		outtake.move(outtake_voltage);
-	}
-	void startRunningOuttake(int voltage) {
-		outtake.move(voltage);
-	}
-	void startRunningOuttake(bool reversed) {
+	
+	/*
+	* Runs outtake at default voltage, with a optional boolean parameter to reverse the direction
+	*/
+	void startRunningOuttake(bool reversed = false) {
 		if (reversed)
 			outtake.move(-outtake_voltage);
 		else
 			outtake.move(outtake_voltage);
 	}
+	/*
+	* Voltage overload, sets outtake voltage, should be from -127 to 127 inclusive
+	* If voltage is out of bounds it will be set to the closest value.
+	* Set negative voltage to reverse
+	*/
+	void startRunningOuttake(int voltage) {
+		int voltage_low_bound = -127;
+		int voltage_high_bound = 127;
+		int valid_voltage = std::clamp(voltage, voltage_low_bound, voltage_high_bound);
+		intake.move(valid_voltage);
+	}
 
+	/*
+	* Stops the intake if it's moving
+	*/
 	void stopIntake() {
 		intake.brake();
 	}
 
+	/*
+	* Stops the outtake if it's moving
+	*/
 	void stopOuttake() {
 		outtake.brake();
 	}
 
+	/*
+	* Setter for opcontrol_mode
+	*/
 	void setOpcontrolMode(OpControlMode mode) {
 		opcontrol_mode = mode;
 	}
 
+	/*
+	* Getter for opcontrol_mode
+	*/
 	OpControlMode getOpcontrolMode() const {
 		return opcontrol_mode;
 	}
 
-	// Move forward a given distance (in inches)
-	void moveForward(double inches) {
+	/*
+	* Move forward a number of inches using default velocity
+	*/
+	void move(double inches){ 
 		double revs = inches / (pi * wheel_diameter);
-		int ticks = static_cast<int>(revs * ticks_per_rev);
-
-		left_mg.tare_position();
-		right_mg.tare_position();
-
-		left_mg.move_absolute(ticks, forwardVolatage);
-		right_mg.move_absolute(ticks, forwardVolatage);
-
-		left_mg.brake();
-		right_mg.brake();
+		int degrees = static_cast<int>(revs * 360);
+		left_mg.move_relative(degrees, forward_voltage); //* technicly takes in RPM not voltage but it works anyway
+		right_mg.move_relative(degrees, forward_voltage);
+	}
+	/*
+	* Move forward a number of inches using a set velocity
+	* Use negative voltage to go backwards
+	*/
+	void move(double inches, int rpm){
+		double revs = inches / (pi * wheel_diameter);
+		int degrees = static_cast<int>(revs * 360);
+		left_mg.move_relative(degrees, rpm);
+		right_mg.move_relative(degrees, rpm);
 	}
 
+	/*
+	* Turns using PID
+	* target_in_degrees: the target rotation to turn to, positive is clockwise
+	* kP: proportional constant, gets smaller as target gets closer 
+	* kI: integral constant, use to fix steady state error
+	* kD: derivative constant, used to prevent overshooting
+	* All constants should be between 0 and 1. kP is usually much larger than kI and kD.
+
+	*/
 	void turn(double target_in_degrees, double kP = 0.1, double kI = 0.0, double kD = 0.0) {
+		kP = std::clamp(kP, 0.0, 1.0);
+		kI = std::clamp(kP, 0.0, 1.0);
+		kD = std::clamp(kP, 0.0, 1.0);
 		double error = target_in_degrees;
 		double previous_error = error;
 		double integral = 0.0;
@@ -124,16 +184,53 @@ public:
 		int left_voltage = 0;
 		int right_voltage = 0;
 
-		inertial_sensor.tare_rotation();
-		while (fabs(error) > 3.0) {
+		if (inertial_sensor.tare_rotation() == PROS_ERR){
+			while (1){
+				pros::lcd::print(0 , "Failed to zero rotation, errno = %d", errno);
+				pros::delay(2);
+			}
+		}
+		pros::delay(2000);
+
+		pros::Controller master = pros::Controller(pros::E_CONTROLLER_MASTER);
+		while (1) {
+			
+			if (fabs(error) < 3.0){
+				pros::lcd::print(1, "err: %d", (int)error);
+				pros::lcd::print(2, "prev: %d", (int)previous_error);
+				pros::lcd::print(3, "target: %d", (int)target_in_degrees);
+				pros::lcd::print(4, "lvolt: %d", (int)left_voltage);
+				pros::lcd::print(5, "rvolt: %d", (int)right_voltage);
+				pros::lcd::print(6, "ended");
+				break;
+			}
+
 			rotation = inertial_sensor.get_rotation();
+			if (rotation == PROS_ERR_F){
+				pros::lcd::print(6, "IMU broke");
+				if (errno == ENXIO)
+					pros::lcd::print(7, "wrong IMU port");
+				else if (errno == ENODEV)
+					pros::lcd::print(7, "'port cannot be configured as an inertal sensor', whatever that means");
+				else if (errno == EAGAIN)
+					pros::lcd::print(7, "IMU Calibrating");
+			}
+
 			previous_error = error;
 			error = target_in_degrees - rotation;
 			integral += error;
 			derivative = error - previous_error;
 			left_voltage = (int)(kP * error + kI * integral + kD * derivative);
 			right_voltage = -(int)(kP * error + kI * integral + kD * derivative);
-			pros::delay(10);
+
+			left_mg.move(left_voltage);
+			right_mg.move(right_voltage);
+			pros::lcd::print(1, "rotation: %d err: %d", (int)rotation, (int)error);
+			pros::lcd::print(2, "prev: %d", (int)previous_error);
+			pros::lcd::print(3, "target: %d", (int)target_in_degrees);
+			pros::lcd::print(4, "lvolt: %d", (int)left_voltage);
+			pros::lcd::print(5, "rvolt: %d", (int)right_voltage);
+			pros::delay(2);	
 		}
 		left_mg.brake();
 		right_mg.brake();
@@ -141,8 +238,9 @@ public:
 
 	// Opcontrol loop method
 	// The actual loop is opcontrol(), this is just called within it
-	void opcontrolLoop(pros::Controller& controller) {
+	void opcontrolMove(pros::Controller& controller) {
 		int left = 0, right = 0;
+		
 		switch (opcontrol_mode) {
 			case OpControlMode::LEFT_ARCADE: {
 				int dir = controller.get_analog(ANALOG_LEFT_Y);
@@ -176,7 +274,8 @@ public:
 	}
 };
 
- void on_center_button() {
+
+void on_center_button() {
 	static bool pressed = false;
 	pressed = !pressed;
 	if (pressed) {
@@ -194,7 +293,6 @@ public:
  */
 void initialize() {
 	pros::lcd::initialize();
-	
 	pros::lcd::register_btn1_cb(on_center_button);
 }
 
@@ -228,73 +326,34 @@ void competition_initialize() {}
  * from where it left off.
  */
 
-void testPid(Drivetrain& drivetrain, double target_distance) {
-	pros::Controller master = pros::Controller(pros::E_CONTROLLER_MASTER);
-	double k_p = 0.1;
-	double k_i = 0.0;
-	double k_d = 0.0;
-	int b = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B);
-	int up = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP);
-	int down = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN);
-	int left = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT);
-	int right = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT);
-
-	ControlConstant selected = ControlConstant::KP;
-	while (!b){
-		b = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B);
-		up = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP);
-		down = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN);
-		left = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT);
-		right = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT);
-		master.clear();
-		if (left){
-			selected = (selected == ControlConstant::KP) ? ControlConstant::KD : (ControlConstant)((int)selected - 1);
-		} else if (right){
-			selected = (selected == ControlConstant::KD) ? ControlConstant::KP : (ControlConstant)((int)selected + 1);
-		}
-
-		switch (selected){
-			case ControlConstant::KP: {
-				if (up) k_p += 0.1;
-				else if (down) k_p -= 0.1;
-				break;
-			}
-			case ControlConstant::KI: {
-				if (up) k_i += 0.05;
-				else if (down) k_i -= 0.05;
-				break;
-			}
-			case ControlConstant::KD: {
-				if (up) k_d += 0.05;
-				else if (down) k_d -= 0.05;
-				break;
-			}
-		}
-
-		std::string p_prefix = (selected == ControlConstant::KP) ? "*" : "";
-		std::string i_prefix = (selected == ControlConstant::KI) ? "*" : "";
-		std::string d_prefix = (selected == ControlConstant::KD) ? "*" : "";
-		master.print(0, 0, "%skP: %.1f" , p_prefix, k_p);
-		master.print(1, 0, "%skI: %.2f", i_prefix, k_i);
-		master.print(2, 0, "%skD: %.2f", d_prefix, k_d);
-	}
-	drivetrain.turn(target_distance, k_p, k_i, k_d);
-}
 
 void autonomous() {
-	//* PATH PLANNING
 	Drivetrain drivetrain;
-	testPid(drivetrain, 90);
-	// Orient bot facing two blocks on side
-	
-	 // Go forward around 1.5 squares
-
-	 // Turn towards loader
-	 // Move towards loader
-	// Do intake
-	// Back a little
-	// Turn 180
-	// Forward and score
+	drivetrain.move(12);
+	pros::delay(1000);
+	drivetrain.turn(-90, 0.8, 0.02);
+	drivetrain.move(41);
+	pros::delay(1000);
+	drivetrain.turn(-90, 0.8, 0.02);
+	pros::lcd::print(0, "secs: %d", pros::millis() / 1000);
+	drivetrain.moveIntakeArm();
+	drivetrain.startRunningIntake(true);
+	drivetrain.move(25);
+	pros::delay(1500);
+	drivetrain.move(-1);
+	pros::delay(500);
+	drivetrain.move(1);
+	pros::delay(500);
+	drivetrain.stopIntake();
+	drivetrain.move(-15); // tile - despenser - half bot length
+	drivetrain.moveIntakeArm();
+	//drivetrain.turn(170, 0.8, 0.04, 0.5);
+	drivetrain.turn(-90, 0.8, 0.02);
+	drivetrain.turn(-90, 0.8, 0.02);
+	drivetrain.toggleBotHeight();
+	drivetrain.move(15);
+	drivetrain.startRunningOuttake(true);
+	drivetrain.startRunningIntake(true);
 }
 
 /**
@@ -355,17 +414,14 @@ void opcontrol() {
 		}
 
 		if (x) {
-			drivetrain.moveOutakeArm();
+			drivetrain.toggleBotHeight();
 		}
 
 		if (b) {
 			drivetrain.moveIntakeArm();
 		}
 
-
-		pros::lcd::print(0 /*line*/, "Mode: %d", static_cast<int>(drivetrain.getOpcontrolMode()));
-
-		drivetrain.opcontrolLoop(master);
+		drivetrain.opcontrolMove(master);
 		pros::delay(20);
 	}
 }

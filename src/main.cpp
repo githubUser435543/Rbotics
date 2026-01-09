@@ -174,20 +174,30 @@ public:
 	*/
 	void turn(double target_in_degrees, double kP = 0.1, double kI = 0.0, double kD = 0.0) {
 		kP = std::clamp(kP, 0.0, 1.0);
-		kI = std::clamp(kP, 0.0, 1.0);
-		kD = std::clamp(kP, 0.0, 1.0);
+		kI = std::clamp(kI, 0.0, 1.0);
+		kD = std::clamp(kD, 0.0, 1.0);
 		double error = target_in_degrees;
 		double previous_error = error;
 		double integral = 0.0;
 		double derivative = 0.0;
 		double rotation = 0.0;
-		int left_voltage = 0;
-		int right_voltage = 0;
+		long long left_voltage = 0;
+		long long right_voltage = 0;
 
 		if (inertial_sensor.tare_rotation() == PROS_ERR){
-			while (1){
-				pros::lcd::print(0 , "Failed to zero rotation, errno = %d", errno);
-				pros::delay(2);
+			if (errno == EAGAIN){
+				pros::lcd::print(0 , "Sensor calibrating, unable to zero rotation", errno);
+				while (inertial_sensor.is_calibrating())
+					pros::delay(2);
+				inertial_sensor.tare_rotation();
+			}
+			else if (errno == ENODEV){
+				pros::lcd::print(0, "Port cannot be inertial sensor");
+				return;
+			}
+			else if (errno == EAGAIN){
+				pros::lcd::print(0, "Port number not 1-21");
+				return;
 			}
 		}
 		pros::delay(2000);
@@ -198,48 +208,61 @@ public:
 			if (fabs(error) < 3.0){
 				pros::lcd::print(1, "err: %d", (int)error);
 				pros::lcd::print(2, "prev: %d", (int)previous_error);
-				pros::lcd::print(3, "target: %d", (int)target_in_degrees);
-				pros::lcd::print(4, "lvolt: %d", (int)left_voltage);
-				pros::lcd::print(5, "rvolt: %d", (int)right_voltage);
 				pros::lcd::print(6, "ended");
+				//*DEBUG
+				left_mg.brake();
+				right_mg.brake();
+				while (1){
+					pros::delay(2);
+				}
+				//*DEBUG
+				
 				break;
 			}
 
 			rotation = inertial_sensor.get_rotation();
 			if (rotation == PROS_ERR_F){
-				pros::lcd::print(6, "IMU broke");
+				pros::lcd::print(0, "IMU broke");
 				if (errno == ENXIO)
-					pros::lcd::print(7, "wrong IMU port");
+					pros::lcd::print(1, "wrong IMU port");
 				else if (errno == ENODEV)
-					pros::lcd::print(7, "'port cannot be configured as an inertal sensor', whatever that means");
+					pros::lcd::print(1, "'port cannot be configured as an inertal sensor', whatever that means");
 				else if (errno == EAGAIN)
-					pros::lcd::print(7, "IMU Calibrating");
+					pros::lcd::print(1, "IMU Calibrating");
+				break;
 			}
 
 			previous_error = error;
 			error = target_in_degrees - rotation;
 			integral += error;
+			integral *= 0.95;
 			derivative = error - previous_error;
-			left_voltage = (int)(kP * error + kI * integral + kD * derivative);
-			right_voltage = -(int)(kP * error + kI * integral + kD * derivative);
+			left_voltage = (long long)(kP * error + kI * integral + kD * derivative);
+			right_voltage = -(long long)(kP * error + kI * integral + kD * derivative);
 
 			left_mg.move(left_voltage);
 			right_mg.move(right_voltage);
-			pros::lcd::print(1, "rotation: %d err: %d", (int)rotation, (int)error);
-			pros::lcd::print(2, "prev: %d", (int)previous_error);
-			pros::lcd::print(3, "target: %d", (int)target_in_degrees);
-			pros::lcd::print(4, "lvolt: %d", (int)left_voltage);
-			pros::lcd::print(5, "rvolt: %d", (int)right_voltage);
-			pros::delay(2);	
+			pros::lcd::print(1, "rotation: %d err: %d", (int)(inertial_sensor.get_rotation()), (int)error);
+			pros::lcd::print(2, "lv: %d rv: %d", (int) left_voltage,(int) right_voltage);
+			pros::lcd::print(3, "kP: %d err: %d m: %d", (int) (kP * 100), (int)error, (int)(error * kP));
+			pros::lcd::print(4, "kI: %d int: %d m: %d", (int) (kI * 100), (int)integral, (int)(integral * kI));
+			pros::lcd::print(5, "kD: %d der: %d m: %d", (int) (kD * 100), (int)derivative, (int)(derivative * kD));
+			pros::delay(50);	
 		}
 		left_mg.brake();
 		right_mg.brake();
 	}
 
+	void waitForInertial(){
+		inertial_sensor.reset();
+		while (inertial_sensor.is_calibrating())
+			pros::delay(2);
+	}
 	// Opcontrol loop method
 	// The actual loop is opcontrol(), this is just called within it
 	void opcontrolMove(pros::Controller& controller) {
 		int left = 0, right = 0;
+		
 		
 		switch (opcontrol_mode) {
 			case OpControlMode::LEFT_ARCADE: {
@@ -327,8 +350,8 @@ void competition_initialize() {}
  */
 
 
-void autonomous() {
-	Drivetrain drivetrain;
+
+void realAuton(Drivetrain& drivetrain){
 	drivetrain.move(12);
 	pros::delay(1000);
 	drivetrain.turn(-90, 0.8, 0.02);
@@ -354,6 +377,14 @@ void autonomous() {
 	drivetrain.move(15);
 	drivetrain.startRunningOuttake(true);
 	drivetrain.startRunningIntake(true);
+
+}
+void autonomous() {
+	Drivetrain drivetrain;
+	drivetrain.waitForInertial();
+	
+	drivetrain.turn(90, 1);
+	//realAuton(drivetrain);
 }
 
 /**

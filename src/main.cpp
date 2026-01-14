@@ -151,6 +151,9 @@ public:
 		int degrees = static_cast<int>(revs * 360);
 		left_mg.move_relative(degrees, forward_voltage); //* technicly takes in RPM not voltage but it works anyway
 		right_mg.move_relative(degrees, forward_voltage);
+		while (left_mg.get_voltage() && right_mg.get_voltage()){
+			pros::delay(2);
+		}
 	}
 	/*
 	* Move forward a number of inches using a set velocity
@@ -186,10 +189,8 @@ public:
 
 		if (inertial_sensor.tare_rotation() == PROS_ERR){
 			if (errno == EAGAIN){
-				pros::lcd::print(0 , "Sensor calibrating, unable to zero rotation", errno);
-				while (inertial_sensor.is_calibrating())
-					pros::delay(2);
-				inertial_sensor.tare_rotation();
+				pros::lcd::print(0 , "Inertial sensor calibrating, did you wait for calibration?");
+				return;
 			}
 			else if (errno == ENODEV){
 				pros::lcd::print(0, "Port cannot be inertial sensor");
@@ -205,18 +206,12 @@ public:
 		pros::Controller master = pros::Controller(pros::E_CONTROLLER_MASTER);
 		while (1) {
 			
-			if (fabs(error) < 3.0){
+			if (abs((int)error) <= 1){
 				pros::lcd::print(1, "err: %d", (int)error);
 				pros::lcd::print(2, "prev: %d", (int)previous_error);
 				pros::lcd::print(6, "ended");
-				//*DEBUG
 				left_mg.brake();
 				right_mg.brake();
-				while (1){
-					pros::delay(2);
-				}
-				//*DEBUG
-				
 				break;
 			}
 
@@ -235,7 +230,7 @@ public:
 			previous_error = error;
 			error = target_in_degrees - rotation;
 			integral += error;
-			integral *= 0.95;
+			//integral *= 0.95;
 			derivative = error - previous_error;
 			left_voltage = (long long)(kP * error + kI * integral + kD * derivative);
 			right_voltage = -(long long)(kP * error + kI * integral + kD * derivative);
@@ -350,29 +345,29 @@ void competition_initialize() {}
  */
 
 
-
+/*
+* autonomous() is a special function that is called by the operating system, 
+* sometimes you might want to run something other than the autonomous there 
+* thats why this function exists.
+*/
 void realAuton(Drivetrain& drivetrain){
+	const double rightAngleTurnKP = 0.80;
+	const double rightAngleTurnKI = 0.02;
 	drivetrain.move(12);
-	pros::delay(1000);
-	drivetrain.turn(-90, 0.8, 0.02);
+	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
 	drivetrain.move(41);
-	pros::delay(1000);
-	drivetrain.turn(-90, 0.8, 0.02);
-	pros::lcd::print(0, "secs: %d", pros::millis() / 1000);
+	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
 	drivetrain.moveIntakeArm();
 	drivetrain.startRunningIntake(true);
 	drivetrain.move(25);
-	pros::delay(1500);
 	drivetrain.move(-1);
-	pros::delay(500);
 	drivetrain.move(1);
-	pros::delay(500);
 	drivetrain.stopIntake();
 	drivetrain.move(-15); // tile - despenser - half bot length
 	drivetrain.moveIntakeArm();
 	//drivetrain.turn(170, 0.8, 0.04, 0.5);
-	drivetrain.turn(-90, 0.8, 0.02);
-	drivetrain.turn(-90, 0.8, 0.02);
+	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
+	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
 	drivetrain.toggleBotHeight();
 	drivetrain.move(15);
 	drivetrain.startRunningOuttake(true);
@@ -383,8 +378,7 @@ void autonomous() {
 	Drivetrain drivetrain;
 	drivetrain.waitForInertial();
 	
-	drivetrain.turn(90, 1);
-	//realAuton(drivetrain);
+	realAuton(drivetrain);
 }
 
 /**

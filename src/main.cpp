@@ -143,6 +143,18 @@ public:
 		return opcontrol_mode;
 	}
 
+
+	/*
+	* Last minute hack
+	*/
+	void moveRelative(double arbitraryDistanceUnits){
+		double time = arbitraryDistanceUnits / forward_voltage; //* We all know that voltage is basicly the same thing as speed
+		left_mg.move(forward_voltage);
+		right_mg.move(forward_voltage);
+		double k = 10000; // Constant bc we're bullshiting units
+		pros::delay(time * k);
+	}
+
 	/*
 	* Move forward a number of inches using default velocity
 	*/
@@ -154,6 +166,8 @@ public:
 		while (left_mg.get_voltage() && right_mg.get_voltage()){
 			pros::delay(2);
 		}
+		left_mg.move(0);
+		right_mg.move(0);
 	}
 	/*
 	* Move forward a number of inches using a set velocity
@@ -210,8 +224,8 @@ public:
 				pros::lcd::print(1, "err: %d", (int)error);
 				pros::lcd::print(2, "prev: %d", (int)previous_error);
 				pros::lcd::print(6, "ended");
-				left_mg.brake();
-				right_mg.brake();
+				left_mg.move(0);
+				right_mg.move(0);
 				break;
 			}
 
@@ -353,28 +367,10 @@ void competition_initialize() {}
 void realAuton(Drivetrain& drivetrain){
 	const double rightAngleTurnKP = 0.80;
 	const double rightAngleTurnKI = 0.02;
-	drivetrain.move(12);
-	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
-	drivetrain.move(41);
-	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
-	drivetrain.moveIntakeArm();
-	drivetrain.startRunningIntake(true);
-	drivetrain.move(25);
-	drivetrain.move(-1);
-	drivetrain.move(1);
-	drivetrain.stopIntake();
-	drivetrain.move(-15); // tile - despenser - half bot length
-	drivetrain.moveIntakeArm();
-	//drivetrain.turn(170, 0.8, 0.04, 0.5);
-	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
-	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
-	drivetrain.toggleBotHeight();
-	drivetrain.move(15);
-	drivetrain.startRunningOuttake(true);
-	drivetrain.startRunningIntake(true);
 
 }
 void autonomous() {
+	//* Try using only motor.move() instead of move realtive
 	Drivetrain drivetrain;
 	drivetrain.waitForInertial();
 	

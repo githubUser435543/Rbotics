@@ -147,12 +147,18 @@ public:
 	/*
 	* Last minute hack
 	*/
-	void moveRelative(double arbitraryDistanceUnits){
-		double time = arbitraryDistanceUnits / forward_voltage; //* We all know that voltage is basicly the same thing as speed
+	void moveRelative(double milis){
+		//double inital_rotation = inertial_sensor.get_rotation();
 		left_mg.move(forward_voltage);
 		right_mg.move(forward_voltage);
-		double k = 10000; // Constant bc we're bullshiting units
-		pros::delay(time * k);
+		if (milis < 0){
+			milis = fabs(milis);
+			left_mg.move(-forward_voltage);
+			right_mg.move(-forward_voltage);
+		}
+		pros::delay(milis);
+		left_mg.move(0);
+		right_mg.move(0);
 	}
 
 	/*
@@ -215,7 +221,7 @@ public:
 				return;
 			}
 		}
-		pros::delay(2000);
+		pros::delay(500);
 
 		pros::Controller master = pros::Controller(pros::E_CONTROLLER_MASTER);
 		while (1) {
@@ -352,7 +358,6 @@ void competition_initialize() {}
  * the Field Management System or the VEX Competition Switch in the autonomous
  * mode. Alternatively, this function may be called in initialize or opcontrol
  * for non-competition testing purposes.
- *
  * If the robot is disabled or communications is lost, the autonomous task
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
@@ -368,6 +373,49 @@ void realAuton(Drivetrain& drivetrain){
 	const double rightAngleTurnKP = 0.80;
 	const double rightAngleTurnKI = 0.02;
 
+	drivetrain.toggleBotHeight();
+	drivetrain.moveRelative(500);
+	drivetrain.turn(-88 /*slight left drift*/, rightAngleTurnKP, rightAngleTurnKI); 
+	drivetrain.moveRelative(1160);
+	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
+	drivetrain.moveIntakeArm();
+	drivetrain.startRunningIntake(true);
+	drivetrain.moveRelative(880);
+	pros::delay(1000);
+	drivetrain.moveRelative(-500);
+	drivetrain.moveRelative(700);
+	pros::delay(1000);
+	drivetrain.stopIntake();
+	drivetrain.startRunningIntake(true);
+	drivetrain.moveRelative(-700);
+	drivetrain.moveIntakeArm();
+	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
+	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
+	drivetrain.moveRelative(600);
+	drivetrain.startRunningOuttake(true); // startRunningInstake(true)
+	/*
+	drivetrain.toggleBotHeight();
+	drivetrain.moveRelative(500);
+	drivetrain.turn(-88 slight left drift, rightAngleTurnKP, rightAngleTurnKI); 
+	drivetrain.moveRelative(1100);
+	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
+	drivetrain.moveIntakeArm();
+	drivetrain.startRunningIntake(true);
+	drivetrain.moveRelative(880);
+	pros::delay(1000);
+	drivetrain.moveRelative(-500);
+	drivetrain.moveRelative(700);
+	pros::delay(1000);
+	drivetrain.stopIntake();
+	drivetrain.startRunningIntake(true);
+	drivetrain.moveRelative(-700);
+	drivetrain.moveIntakeArm();
+	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
+	drivetrain.moveRelative(-80); // 150
+	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
+	drivetrain.moveRelative(600);
+	drivetrain.startRunningOuttake(true); // startRunningInstake(true)
+	*/
 }
 void autonomous() {
 	//* Try using only motor.move() instead of move realtive

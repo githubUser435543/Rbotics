@@ -161,6 +161,49 @@ public:
 		right_mg.move(0);
 	}
 
+	void drivePID(double inches, double kP = 0.1, double kI = 0, double kD = 0) {
+		kP = std::clamp(kP, 0.0, 1.0);
+		kI = std::clamp(kI, 0.0, 1.0);
+		kD = std::clamp(kD, 0.0, 1.0);
+
+		const double target_degrees = (inches / (pi * wheel_diameter)) * 360.0;
+
+		left_mg.tare_position();
+		right_mg.tare_position();
+
+		double error = target_degrees;
+		double prev_error = error;
+		double integral = 0.0;
+
+		while (true) {
+			double left_position = left_mg.get_position();
+			double right_position = right_mg.get_position();
+			double average_position = (left_position + right_position) * 0.5;
+
+			error = target_degrees - average_position;
+			if (std::abs(error) <= 1.0)
+				break;
+
+			integral += error;
+			double derivative = error - prev_error;
+			prev_error = error;
+
+			double output = kP * error + kI * integral + kD * derivative;
+
+			left_mg.move(0);
+			right_mg.move(0);
+			//left_mg.move(output);
+			//right_mg.move(output);
+
+			pros::delay(10);
+		}
+
+		left_mg.brake();
+		right_mg.brake();
+	}
+
+
+
 	/*
 	* Move forward a number of inches using default velocity
 	*/

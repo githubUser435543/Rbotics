@@ -6,6 +6,10 @@
 *.bin
 *.elf
 
+# Random bs
+.idea/
+
+
 # PROS
 bin/
 .vscode/
@@ -16,3 +20,6 @@ temp.log
 temp.errors
 *.ini
 .d/
+firmware/
+include/
+project.pros

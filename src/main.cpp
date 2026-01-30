@@ -21,6 +21,7 @@ private:
 	pros::Motor outtake = 9;
 	pros::adi::Pneumatics intake_arm = pros::adi::Pneumatics('A', false);
 	pros::adi::Pneumatics outtake_elevator = pros::adi::Pneumatics('B', false);
+	pros::adi::Pneumatics descoreArm = pros::adi::Pneumatics('C', false);
 
 
 	//* ---------- PRIMATIVE MEMBERS ----------
@@ -42,6 +43,10 @@ public:
 	Drivetrain(){
 		left_mg.set_encoder_units(pros::motor_encoder_units_e::E_MOTOR_ENCODER_DEGREES);
 		right_mg.set_encoder_units(pros::motor_encoder_units_e::E_MOTOR_ENCODER_DEGREES);
+		
+		left_mg.set_gearing_all(pros::motor_gearset_e_t::E_MOTOR_GEAR_GREEN);
+		right_mg.set_gearing_all(pros::motor_gearset_e_t::E_MOTOR_GEAR_GREEN);
+
 	}
 
 	/*
@@ -68,6 +73,19 @@ public:
 			return intake_arm.retract() == success;
 		else
 			return intake_arm.extend() == success;
+	}
+	
+	/*
+	* Moves descore arm, pretty easy to understand
+	* Returns true if successful and false if failed
+	*/
+	bool moveDescoreArm() {
+		const char success = 1;
+		bool extended = descoreArm.is_extended();
+		if (extended)
+			return descoreArm.retract() == success;
+		else
+			return descoreArm.extend() == success;
 	}
 	
 
@@ -161,25 +179,56 @@ public:
 		right_mg.move(0);
 	}
 
-	void drivePID(double inches, double kP = 0.1, double kI = 0, double kD = 0) {
-		kP = std::clamp(kP, 0.0, 1.0);
-		kI = std::clamp(kI, 0.0, 1.0);
-		kD = std::clamp(kD, 0.0, 1.0);
+	void drivePID(double inches, double kP = 0.1, double kPturn = 0.0, double kI = 0, double kD = 0) {
+		kP = std::clamp(kP, 0.0, 0.5);
+		kI = std::clamp(kI, 0.0, 0.1);
+		kD = std::clamp(kD, 0.0, 0.1);
 
 		const double target_degrees = (inches / (pi * wheel_diameter)) * 360.0;
 
-		left_mg.tare_position();
-		right_mg.tare_position();
+		if (!left_mg.tare_position()){
+			if (errno == EACCES)
+				pros::lcd::print(1, "mutex stuff");
+			else if (errno == ENODEV){
+				pros::lcd::print(1, "port cannot be configured as motor");
+			}
+			return;
+		}
+		if (!right_mg.tare_position()){
+			if (errno == EACCES)
+				pros::lcd::print(1, "mutex stuff");
+			return;
+		}
+		if (inertial_sensor.tare_rotation() == PROS_ERR){
+			if (errno == EAGAIN){
+				pros::lcd::print(0 , "Inertial sensor calibrating, did you wait for calibration?");
+				return;
+			}
+			else if (errno == ENODEV){
+				pros::lcd::print(0, "Port cannot be inertial sensor");
+				return;
+			}
+			else if (errno == EAGAIN){
+				pros::lcd::print(0, "Port number not 1-21");
+				return;
+			}
+			pros::delay(10000);
+		}
 
 		double error = target_degrees;
 		double prev_error = error;
 		double integral = 0.0;
 
+		double left_position, right_position, rotation, average_position;
 		while (true) {
-			double left_position = left_mg.get_position();
-			double right_position = right_mg.get_position();
-			double average_position = (left_position + right_position) * 0.5;
-
+			left_position = left_mg.get_position() * 2;
+			right_position = right_mg.get_position() * 2;
+			rotation = inertial_sensor.get_rotation();
+			average_position = (left_position + right_position) * 0.5;
+			pros::lcd::print(1, "L pos: %d", (int)left_position);
+			pros::lcd::print(2, "R pos: %d", (int)right_position);
+			pros::lcd::print(3, "Target: %d", (int)target_degrees);
+			
 			error = target_degrees - average_position;
 			if (std::abs(error) <= 1.0)
 				break;
@@ -188,14 +237,17 @@ public:
 			double derivative = error - prev_error;
 			prev_error = error;
 
-			double output = kP * error + kI * integral + kD * derivative;
+			double voltage = kP * error + kI * integral + kD * derivative;
+			double left_voltage = voltage + (kPturn * -rotation);
+			double right_voltage = voltage + (kPturn * rotation);
+			pros::lcd::print(4, "rot: %d", (int)rotation);
+			pros::lcd::print(5, "lv: %d", (int)left_voltage);
+			pros::lcd::print(6, "rv: %d", (int)right_voltage);
 
-			left_mg.move(0);
-			right_mg.move(0);
-			//left_mg.move(output);
-			//right_mg.move(output);
+			left_mg.move(left_voltage);
+			right_mg.move(right_voltage);
 
-			pros::delay(10);
+			pros::delay(50);
 		}
 
 		left_mg.brake();
@@ -413,107 +465,61 @@ void competition_initialize() {}
 * thats why this function exists.
 */
 void realAuton(Drivetrain& drivetrain){
-	const double rightAngleTurnKP = 0.80;
-	const double rightAngleTurnKI = 0.02;
+	const double right_angle_turn_KP = 0.80;
+	const double right_angle_turn_KI = 0.02;
+	const double forward_KP = 0.05;
+	const double forward_KI = 0.0002;
+	const double drive_PID_turn_KP = 2;
+	drivetrain.drivePID(40, 0.05, 2, 0.0002);
 
 	drivetrain.toggleBotHeight();
-	drivetrain.moveRelative(500);
-	drivetrain.turn(-88 /*slight left drift*/, rightAngleTurnKP, rightAngleTurnKI); 
-	drivetrain.moveRelative(1160);
-	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
+	drivetrain.drivePID(12);
+	drivetrain.turn(-88 /*slight left drift*/, right_angle_turn_KP, right_angle_turn_KI); 
+	drivetrain.drivePID(40, forward_KP, drive_PID_turn_KP, forward_KI);
+	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.moveIntakeArm();
 	drivetrain.startRunningIntake(true);
-	drivetrain.moveRelative(880);
-	pros::delay(1000);
-	drivetrain.moveRelative(-500);
-	drivetrain.moveRelative(700);
-	pros::delay(1000);
+	drivetrain.drivePID(4, forward_KP, drive_PID_turn_KP, forward_KI);
+	drivetrain.drivePID(-3, forward_KP, drive_PID_turn_KP, forward_KI);
+	drivetrain.drivePID(3, forward_KP, drive_PID_turn_KP, forward_KI);
 	drivetrain.stopIntake();
 	drivetrain.startRunningIntake(true);
-	drivetrain.moveRelative(-700);
+	drivetrain.drivePID(-4, forward_KP, drive_PID_turn_KP, forward_KI);
 	drivetrain.moveIntakeArm();
-	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
-	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
-	drivetrain.moveRelative(600);
+	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.drivePID(5, forward_KP, drive_PID_turn_KP, forward_KI);
 	drivetrain.startRunningOuttake(true); // startRunningInstake(true)
-	/*
-	drivetrain.toggleBotHeight();
-	drivetrain.moveRelative(500);
-	drivetrain.turn(-88 slight left drift, rightAngleTurnKP, rightAngleTurnKI); 
-	drivetrain.moveRelative(1100);
-	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
-	drivetrain.moveIntakeArm();
-	drivetrain.startRunningIntake(true);
-	drivetrain.moveRelative(880);
-	pros::delay(1000);
-	drivetrain.moveRelative(-500);
-	drivetrain.moveRelative(700);
-	pros::delay(1000);
-	drivetrain.stopIntake();
-	drivetrain.startRunningIntake(true);
-	drivetrain.moveRelative(-700);
-	drivetrain.moveIntakeArm();
-	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
-	drivetrain.moveRelative(-80); // 150
-	drivetrain.turn(-90, rightAngleTurnKP, rightAngleTurnKI);
-	drivetrain.moveRelative(600);
-	drivetrain.startRunningOuttake(true); // startRunningInstake(true)
-	*/
 }
+
+Drivetrain drivetrain;
 void autonomous() {
 	//* Try using only motor.move() instead of move realtive
-	Drivetrain drivetrain;
 	drivetrain.waitForInertial();
 	
-	realAuton(drivetrain);
+	//drivetrain.drivePID(20, 0.06, 0, 0);
+	//realAuton(drivetrain);
+
 }
-
-/**
- * Runs the operator control code. This function will be started in its own task
- * with the default priority and stack size whenever the robot is enabled via
- * the Field Management System or the VEX Competition Switch in the operator
- * control mode.
- *
- * If no competition control is connected, this function will run immediately
- * following initialize().
- *
- * If the robot is disabled or communications is lost, the
- * operator control task will be stopped. Re-enabling the robot will restart the
- * task, not resume it from where it left off.
- */
-
-// ...existing code...
 
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
-	Drivetrain drivetrain;
-
 	while (true) {
-		// Mode selection
-		/*
-		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT))
-			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::LEFT_ARCADE);
-		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN))
-			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::RIGHT_ARCADE);
-		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP))
-			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::SPLIT_ARCADE);
-		if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT))
-			drivetrain.setOpcontrolMode(Drivetrain::OpControlMode::TANK);
-		*/
 		bool r1 = master.get_digital(pros::E_CONTROLLER_DIGITAL_R1);
 		bool r2 = master.get_digital(pros::E_CONTROLLER_DIGITAL_R2);
 		bool l1 = master.get_digital(pros::E_CONTROLLER_DIGITAL_L1);
 		bool l2 = master.get_digital(pros::E_CONTROLLER_DIGITAL_L2);
 		bool x = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X);
 		bool b = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B);
+		bool up = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP);
 
 
 		if (r1) {
 			drivetrain.startRunningIntake(true);
-			drivetrain.startRunningOuttake(true);
+			drivetrain.startRunningOuttake();
 		} else if (r2){
 			drivetrain.startRunningIntake();
-			drivetrain.startRunningOuttake();
+			drivetrain.startRunningOuttake(true);
 		} else if (l1) {
 			drivetrain.startRunningIntake(true);
 			drivetrain.stopOuttake();
@@ -531,6 +537,10 @@ void opcontrol() {
 
 		if (b) {
 			drivetrain.moveIntakeArm();
+		}
+
+		if (up) {
+			drivetrain.moveDescoreArm();
 		}
 
 		drivetrain.opcontrolMove(master);

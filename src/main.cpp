@@ -165,7 +165,7 @@ public:
 	/*
 	* Last minute hack
 	*/
-	void moveRelative(double milis){
+	void moveForTime(double milis){
 		//double inital_rotation = inertial_sensor.get_rotation();
 		left_mg.move(forward_voltage);
 		right_mg.move(forward_voltage);
@@ -218,6 +218,7 @@ public:
 		double error = target_degrees;
 		double prev_error = error;
 		double integral = 0.0;
+		bool increased_int = false;
 
 		double left_position, right_position, rotation, average_position;
 		while (true) {
@@ -233,6 +234,10 @@ public:
 			if (std::abs(error) <= 1.0)
 				break;
 
+			if (!increased_int && error < 15){
+				kI *= 3;
+				increased_int = true;
+			}
 			integral += error;
 			double derivative = error - prev_error;
 			prev_error = error;
@@ -281,6 +286,55 @@ public:
 		right_mg.move_relative(degrees, rpm);
 	}
 
+	//* Untested
+	void turnToPoint(double target, unsigned char voltage){
+		inertial_sensor.tare_rotation();
+
+		int left_voltage = voltage;
+		int right_voltage = voltage;
+		if (target < 0)
+			left_voltage *= -1;
+		else 
+			right_voltage *= -1;
+
+		while (fabs(inertial_sensor.get_rotation()) < target){
+			if (target < 0){
+				left_mg.move(left_voltage);
+				right_mg.move(right_voltage);
+			}
+		}
+	}
+
+	//* Untested
+	void moveToPoint(double target, unsigned char voltage, double turn_KP = 4){
+		inertial_sensor.tare_rotation();
+		const double target_degrees = (target / (pi * wheel_diameter)) * 360.0;
+		while (true) {
+			double left_position = left_mg.get_position() * 2;
+			double right_position = right_mg.get_position() * 2;
+			double rotation = inertial_sensor.get_rotation();
+			double average_position = (left_position + right_position) * 0.5;
+			pros::lcd::print(1, "L pos: %d", (int)left_position);
+			//pros::lcd::print(2, "R pos: %d", (int)right_position);
+			pros::lcd::print(3, "Target: %d", (int)target_degrees);
+			
+			if (target_degrees < average_position)
+				break;
+
+			double error = target_degrees - average_position;
+			double left_voltage = voltage + (turn_KP * -rotation);
+			double right_voltage = voltage + (turn_KP * rotation);
+			//pros::lcd::print(4, "rot: %d", (int)rotation);
+			pros::lcd::print(5, "lv: %d", (int)left_voltage);
+			pros::lcd::print(6, "rv: %d", (int)right_voltage);
+
+			left_mg.move(left_voltage);
+			right_mg.move(right_voltage);
+
+			pros::delay(40);
+		}
+	}
+
 	/*
 	* Turns using PID
 	* target_in_degrees: the target rotation to turn to, positive is clockwise
@@ -288,7 +342,6 @@ public:
 	* kI: integral constant, use to fix steady state error
 	* kD: derivative constant, used to prevent overshooting
 	* All constants should be between 0 and 1. kP is usually much larger than kI and kD.
-
 	*/
 	void turn(double target_in_degrees, double kP = 0.1, double kI = 0.0, double kD = 0.0) {
 		kP = std::clamp(kP, 0.0, 1.0);
@@ -467,38 +520,63 @@ void competition_initialize() {}
 void realAuton(Drivetrain& drivetrain){
 	const double right_angle_turn_KP = 0.80;
 	const double right_angle_turn_KI = 0.02;
-	const double forward_KP = 0.05;
-	const double forward_KI = 0.0002;
+	const double forward_KP = 0.08;
+	const double forward_KI = 0.0025;
+	const double forward_KD = 0.002;
 	const double drive_PID_turn_KP = 2;
-	drivetrain.drivePID(40, 0.05, 2, 0.0002);
-
+	const bool right_auton = false;
+	const double swapAuton = (right_auton) ? -1 : 1;
 	drivetrain.toggleBotHeight();
-	drivetrain.drivePID(12);
-	drivetrain.turn(-88 /*slight left drift*/, right_angle_turn_KP, right_angle_turn_KI); 
-	drivetrain.drivePID(40, forward_KP, drive_PID_turn_KP, forward_KI);
+	drivetrain.drivePID(8, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
+	drivetrain.turn(-88, right_angle_turn_KP, right_angle_turn_KI); 
+	drivetrain.moveForTime(1160);
 	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.moveIntakeArm();
 	drivetrain.startRunningIntake(true);
-	drivetrain.drivePID(4, forward_KP, drive_PID_turn_KP, forward_KI);
+	drivetrain.moveForTime(880);
+	pros::delay(1000);
+	drivetrain.moveForTime(-500);
+	drivetrain.moveForTime(700);
+	pros::delay(1000);
+	drivetrain.stopIntake();
+	drivetrain.startRunningIntake(true);
+	drivetrain.moveForTime(-700);
+	drivetrain.moveIntakeArm();
+	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.moveForTime(600);
+	drivetrain.startRunningOuttake(true); // startRunningInstake(true)
+
+
+	/*
+	drivetrain.toggleBotHeight();
+	drivetrain.drivePID(8, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
+	drivetrain.turn(swapAuton * -88 , right_angle_turn_KP, right_angle_turn_KI); 
+	drivetrain.drivePID(35, forward_KP, drive_PID_turn_KP, forward_KI * 0.8, 0.1);
+	drivetrain.turn(swapAuton * -90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.moveIntakeArm();
+	drivetrain.startRunningIntake(true);
+	drivetrain.drivePID(10, forward_KP * 2, drive_PID_turn_KP, forward_KI);
 	drivetrain.drivePID(-3, forward_KP, drive_PID_turn_KP, forward_KI);
 	drivetrain.drivePID(3, forward_KP, drive_PID_turn_KP, forward_KI);
 	drivetrain.stopIntake();
 	drivetrain.startRunningIntake(true);
-	drivetrain.drivePID(-4, forward_KP, drive_PID_turn_KP, forward_KI);
+	drivetrain.drivePID(-10, forward_KP, drive_PID_turn_KP, forward_KI);
 	drivetrain.moveIntakeArm();
-	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.drivePID(5, forward_KP, drive_PID_turn_KP, forward_KI);
-	drivetrain.startRunningOuttake(true); // startRunningInstake(true)
+	drivetrain.turn(swapAuton * -90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.turn(swapAuton * -90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.moveForTime(500);
+	drivetrain.startRunningOuttake(true);
+	*/
 }
 
 Drivetrain drivetrain;
 void autonomous() {
 	//* Try using only motor.move() instead of move realtive
 	drivetrain.waitForInertial();
+	//drivetrain.moveForTime(300);
 	
-	//drivetrain.drivePID(20, 0.06, 0, 0);
-	//realAuton(drivetrain);
+	drivetrain.moveToPoint(20, 20);
 
 }
 

@@ -226,12 +226,10 @@ public:
 			right_position = right_mg.get_position() * 2;
 			rotation = inertial_sensor.get_rotation();
 			average_position = (left_position + right_position) * 0.5;
-			pros::lcd::print(1, "L pos: %d", (int)left_position);
-			pros::lcd::print(2, "R pos: %d", (int)right_position);
-			pros::lcd::print(3, "Target: %d", (int)target_degrees);
+			
 			
 			error = target_degrees - average_position;
-			if (std::abs(error) <= 1.0)
+			if (std::abs(error) <= 2.0)
 				break;
 
 			if (!increased_int && error < 15){
@@ -245,13 +243,17 @@ public:
 			double voltage = kP * error + kI * integral + kD * derivative;
 			double left_voltage = voltage + (kPturn * -rotation);
 			double right_voltage = voltage + (kPturn * rotation);
-			pros::lcd::print(4, "rot: %d", (int)rotation);
-			pros::lcd::print(5, "lv: %d", (int)left_voltage);
-			pros::lcd::print(6, "rv: %d", (int)right_voltage);
+			
 
 			left_mg.move(left_voltage);
 			right_mg.move(right_voltage);
-
+			pros::lcd::print(1, "L pos: %d", (int)left_position);
+			pros::lcd::print(2, "R pos: %d", (int)right_position);
+			pros::lcd::print(3, "Target: %d", (int)target_degrees);
+			
+			pros::lcd::print(4, "rot: %d", (int)rotation);
+			pros::lcd::print(5, "lv: %d", (int)left_voltage);
+			pros::lcd::print(6, "rv: %d", (int)right_voltage);
 			pros::delay(50);
 		}
 
@@ -318,7 +320,7 @@ public:
 			//pros::lcd::print(2, "R pos: %d", (int)right_position);
 			pros::lcd::print(3, "Target: %d", (int)target_degrees);
 			
-			if (target_degrees < average_position)
+			if (target_degrees < fabs(average_position))
 				break;
 
 			double error = target_degrees - average_position;
@@ -333,6 +335,9 @@ public:
 
 			pros::delay(40);
 		}
+
+		left_mg.move(0);
+		right_mg.move(0);
 	}
 
 	/*
@@ -528,8 +533,8 @@ void realAuton(Drivetrain& drivetrain){
 	const double swapAuton = (right_auton) ? -1 : 1;
 	drivetrain.toggleBotHeight();
 	drivetrain.drivePID(8, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
-	drivetrain.turn(-88, right_angle_turn_KP, right_angle_turn_KI); 
-	drivetrain.moveForTime(1160);
+	drivetrain.turn(-86, right_angle_turn_KP, right_angle_turn_KI); 
+	drivetrain.moveToPoint(37, 30);
 	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.moveIntakeArm();
 	drivetrain.startRunningIntake(true);
@@ -543,9 +548,9 @@ void realAuton(Drivetrain& drivetrain){
 	drivetrain.moveForTime(-700);
 	drivetrain.moveIntakeArm();
 	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.turn(-85, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.moveForTime(600);
-	drivetrain.startRunningOuttake(true); // startRunningInstake(true)
+	drivetrain.startRunningOuttake(); // startRunningInstake(true)
 
 
 	/*
@@ -575,8 +580,11 @@ void autonomous() {
 	//* Try using only motor.move() instead of move realtive
 	drivetrain.waitForInertial();
 	//drivetrain.moveForTime(300);
+
+	realAuton(drivetrain);
 	
-	drivetrain.moveToPoint(20, 20);
+	//drivetrain.moveToPoint(20, 0);
+	
 
 }
 

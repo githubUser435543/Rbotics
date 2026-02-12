@@ -165,10 +165,13 @@ public:
 	/*
 	* Last minute hack
 	*/
-	void moveForTime(double milis){
+	void moveForTime(double milis, unsigned char voltage = 0){
 		//double inital_rotation = inertial_sensor.get_rotation();
-		left_mg.move(forward_voltage);
-		right_mg.move(forward_voltage);
+		if (voltage == 0)
+			voltage = forward_voltage;
+
+		left_mg.move(voltage);
+		right_mg.move(voltage);
 		if (milis < 0){
 			milis = fabs(milis);
 			left_mg.move(-forward_voltage);
@@ -539,9 +542,12 @@ void realAuton(Drivetrain& drivetrain){
 	drivetrain.moveIntakeArm();
 	drivetrain.startRunningIntake(true);
 	drivetrain.moveForTime(880);
-	pros::delay(1000);
-	drivetrain.moveForTime(-500);
-	drivetrain.moveForTime(700);
+	pros::delay(500);
+	drivetrain.moveForTime(100, 50);
+	pros::delay(500);
+	drivetrain.moveForTime(100, 50);
+	pros::delay(500);
+	drivetrain.moveForTime(100, 50);
 	pros::delay(1000);
 	drivetrain.stopIntake();
 	drivetrain.startRunningIntake(true);

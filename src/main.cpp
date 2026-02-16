@@ -235,10 +235,12 @@ public:
 			if (std::abs(error) <= 2.0)
 				break;
 
+			/*
 			if (!increased_int && error < 15){
 				kI *= 3;
 				increased_int = true;
 			}
+			*/
 			integral += error;
 			double derivative = error - prev_error;
 			prev_error = error;
@@ -537,7 +539,7 @@ void realAuton(Drivetrain& drivetrain){
 	drivetrain.toggleBotHeight();
 	drivetrain.drivePID(8, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
 	drivetrain.turn(-86, right_angle_turn_KP, right_angle_turn_KI); 
-	drivetrain.moveToPoint(37, 30);
+	drivetrain.moveToPoint(41, 30);
 	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.moveIntakeArm();
 	drivetrain.startRunningIntake(true);
@@ -587,10 +589,18 @@ void autonomous() {
 	drivetrain.waitForInertial();
 	//drivetrain.moveForTime(300);
 
-	realAuton(drivetrain);
-	
-	//drivetrain.moveToPoint(20, 0);
-	
+	const double right_angle_turn_KP = 0.80;
+	const double right_angle_turn_KI = 0.02;
+	const double forward_KP = 0.08;
+	const double forward_KI = 0.0000;
+	const double forward_KD = 0.000;
+	const double drive_PID_turn_KP = 2;
+	const bool right_auton = false;
+	const double swapAuton = (right_auton) ? -1 : 1;
+	drivetrain.toggleBotHeight();
+	drivetrain.drivePID(8, forward_KP, drive_PID_turn_KP, forward_KI, forward_KD);
+	drivetrain.turn(-86, right_angle_turn_KP, right_angle_turn_KI); 
+	//realAuton(drivetrain);
 
 }
 

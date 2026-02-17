@@ -538,25 +538,29 @@ void realAuton(Drivetrain& drivetrain){
 	const double swapAuton = (right_auton) ? -1 : 1;
 	drivetrain.toggleBotHeight();
 	drivetrain.drivePID(8, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
-	drivetrain.turn(-86, right_angle_turn_KP, right_angle_turn_KI); 
-	drivetrain.moveToPoint(41, 30);
-	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.turn(-86.5, right_angle_turn_KP, right_angle_turn_KI); 
+	drivetrain.moveToPoint(37, 30);
+	drivetrain.turn(-86.5, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.moveIntakeArm();
 	drivetrain.startRunningIntake(true);
 	drivetrain.moveForTime(880);
 	pros::delay(500);
-	drivetrain.moveForTime(100, 50);
+	drivetrain.moveForTime(230, 60);
 	pros::delay(500);
-	drivetrain.moveForTime(100, 50);
+	drivetrain.moveForTime(230, 60);
 	pros::delay(500);
-	drivetrain.moveForTime(100, 50);
+	drivetrain.moveForTime(230, 60);
+	pros::delay(500);
+	drivetrain.moveForTime(230, 60);
+	pros::delay(500);
+	drivetrain.moveForTime(230, 60);
 	pros::delay(1000);
 	drivetrain.stopIntake();
 	drivetrain.startRunningIntake(true);
 	drivetrain.moveForTime(-700);
 	drivetrain.moveIntakeArm();
-	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.turn(-85, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.turn(-89.5, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.turn(-87, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.moveForTime(600);
 	drivetrain.startRunningOuttake(); // startRunningInstake(true)
 
@@ -587,20 +591,8 @@ Drivetrain drivetrain;
 void autonomous() {
 	//* Try using only motor.move() instead of move realtive
 	drivetrain.waitForInertial();
-	//drivetrain.moveForTime(300);
 
-	const double right_angle_turn_KP = 0.80;
-	const double right_angle_turn_KI = 0.02;
-	const double forward_KP = 0.08;
-	const double forward_KI = 0.0000;
-	const double forward_KD = 0.000;
-	const double drive_PID_turn_KP = 2;
-	const bool right_auton = false;
-	const double swapAuton = (right_auton) ? -1 : 1;
-	drivetrain.toggleBotHeight();
-	drivetrain.drivePID(8, forward_KP, drive_PID_turn_KP, forward_KI, forward_KD);
-	drivetrain.turn(-86, right_angle_turn_KP, right_angle_turn_KI); 
-	//realAuton(drivetrain);
+	realAuton(drivetrain);
 
 }
 

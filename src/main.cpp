@@ -252,6 +252,10 @@ public:
 
 			left_mg.move(left_voltage);
 			right_mg.move(right_voltage);
+
+			if (target_degrees > 0 && error < 0)
+				break;
+
 			pros::lcd::print(1, "L pos: %d", (int)left_position);
 			pros::lcd::print(2, "R pos: %d", (int)right_position);
 			pros::lcd::print(3, "Target: %d", (int)target_degrees);
@@ -304,8 +308,9 @@ public:
 		else 
 			right_voltage *= -1;
 
-		while (fabs(inertial_sensor.get_rotation()) < target){
-			if (target < 0){
+		double rotation = inertial_sensor.get_rotation();
+		while (fabs(rotation) < fabs(target)){
+			if (fabs(rotation) > 2){
 				left_mg.move(left_voltage);
 				right_mg.move(right_voltage);
 			}
@@ -537,17 +542,12 @@ void realAuton(Drivetrain& drivetrain){
 	const bool right_auton = false;
 	const double swapAuton = (right_auton) ? -1 : 1;
 	drivetrain.toggleBotHeight();
-	drivetrain.drivePID(8, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
-	drivetrain.turn(-86.5, right_angle_turn_KP, right_angle_turn_KI); 
-	drivetrain.moveToPoint(37, 30);
+	drivetrain.drivePID(31.5, forward_KP * 2.15, drive_PID_turn_KP, 0, 0);
 	drivetrain.turn(-86.5, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.moveIntakeArm();
 	drivetrain.startRunningIntake(true);
+	pros::delay(50);
 	drivetrain.moveForTime(880);
-	pros::delay(500);
-	drivetrain.moveForTime(230, 60);
-	pros::delay(500);
-	drivetrain.moveForTime(230, 60);
 	pros::delay(500);
 	drivetrain.moveForTime(230, 60);
 	pros::delay(500);
@@ -557,12 +557,14 @@ void realAuton(Drivetrain& drivetrain){
 	pros::delay(1000);
 	drivetrain.stopIntake();
 	drivetrain.startRunningIntake(true);
-	drivetrain.moveForTime(-700);
+	drivetrain.moveForTime(-500);
 	drivetrain.moveIntakeArm();
 	drivetrain.turn(-89.5, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.turn(-87, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.moveForTime(600);
+	drivetrain.moveForTime(450);
 	drivetrain.startRunningOuttake(); // startRunningInstake(true)
+	pros::delay(1150);
+	drivetrain.stopOuttake();
 
 
 	/*

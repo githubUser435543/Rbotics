@@ -251,7 +251,11 @@ public:
 			
 
 			left_mg.move(left_voltage);
-			right_mg.move(right_voltage);
+			right_mg.move(right_voltage); 
+
+			if (target_degrees > 0 && error < 0)
+				break;
+
 			pros::lcd::print(1, "L pos: %d", (int)left_position);
 			pros::lcd::print(2, "R pos: %d", (int)right_position);
 			pros::lcd::print(3, "Target: %d", (int)target_degrees);
@@ -295,21 +299,66 @@ public:
 
 	//* Untested
 	void turnToPoint(double target, unsigned char voltage){
-		inertial_sensor.tare_rotation();
+		
+		double error = target;
+		double previous_error = error;
+		double integral = 0.0;
+		double derivative = 0.0;
+		double rotation = 0.0;
+		long long left_voltage = 0;
+		long long right_voltage = 0;
 
-		int left_voltage = voltage;
-		int right_voltage = voltage;
-		if (target < 0)
-			left_voltage *= -1;
-		else 
-			right_voltage *= -1;
-
-		while (fabs(inertial_sensor.get_rotation()) < target){
-			if (target < 0){
-				left_mg.move(left_voltage);
-				right_mg.move(right_voltage);
+		if (inertial_sensor.tare_rotation() == PROS_ERR){
+			if (errno == EAGAIN){
+				pros::lcd::print(0 , "Inertial sensor calibrating, did you wait for calibration?");
+				return;
+			}
+			else if (errno == ENODEV){
+				pros::lcd::print(0, "Port cannot be inertial sensor");
+				return;
+			}
+			else if (errno == EAGAIN){
+				pros::lcd::print(0, "Port number not 1-21");
+				return;
 			}
 		}
+		pros::delay(500);
+
+		pros::Controller master = pros::Controller(pros::E_CONTROLLER_MASTER);
+		while (1) {
+			
+			if (abs((int)error) <= 3){
+				left_mg.move(0);
+				right_mg.move(0);
+				break;
+			}
+
+			rotation = inertial_sensor.get_rotation();
+			if (rotation == PROS_ERR_F){
+				pros::lcd::print(0, "IMU broke");
+				if (errno == ENXIO)
+					pros::lcd::print(1, "wrong IMU port");
+				else if (errno == ENODEV)
+					pros::lcd::print(1, "'port cannot be configured as an inertal sensor', whatever that means");
+				else if (errno == EAGAIN)
+					pros::lcd::print(1, "IMU Calibrating");
+				break;
+			}
+
+			previous_error = error;
+			error = target - rotation;
+			integral += error;
+			//integral *= 0.95;
+			derivative = error - previous_error;
+			left_voltage = (long long)(voltage);
+			right_voltage = -(long long)(voltage);
+
+			left_mg.move(left_voltage);
+			right_mg.move(right_voltage);
+			pros::delay(50);	
+		}
+		left_mg.brake();
+		right_mg.brake();
 	}
 
 	//* Untested
@@ -537,12 +586,11 @@ void realAuton(Drivetrain& drivetrain){
 	const bool right_auton = false;
 	const double swapAuton = (right_auton) ? -1 : 1;
 	drivetrain.toggleBotHeight();
-	drivetrain.drivePID(8, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
-	drivetrain.turn(-86.5, right_angle_turn_KP, right_angle_turn_KI); 
-	drivetrain.moveToPoint(37, 30);
+	drivetrain.drivePID(31.5, forward_KP * 2.15, drive_PID_turn_KP, 0, 0);
 	drivetrain.turn(-86.5, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.moveIntakeArm();
 	drivetrain.startRunningIntake(true);
+	pros::delay(50);
 	drivetrain.moveForTime(880);
 	pros::delay(500);
 	drivetrain.moveForTime(230, 60);
@@ -562,57 +610,61 @@ void realAuton(Drivetrain& drivetrain){
 	pros::delay(3500);
 	drivetrain.stopIntake();
 	drivetrain.stopOuttake();
-	drivetrain.moveForTime(-500);
+	drivetrain.moveForTime(-200);
+	drivetrain.turn(90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.drivePID(47, forward_KP * 2.15, drive_PID_turn_KP, 0, 0);
+	drivetrain.turn(90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.moveForTime(3000, 60);
 
 	// NEED TO TUNE TURN PID FOR 45
 
-	drivetrain.turn(45, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.startRunningIntake(true);
-	drivetrain.moveForTime(2100, 45);
-	drivetrain.stopIntake();
-	drivetrain.startRunningIntake();
-	drivetrain.startRunningOuttake(true);
-	pros::delay(2500);
-	drivetrain.stopIntake();
-	drivetrain.stopOuttake();
-	drivetrain.moveForTime(-500);
-	drivetrain.turn(-45, right_angle_turn_KP, right_angle_turn_KI);
-	// NEEDS TUNING HERE
-	drivetrain.moveForTime(2675, 40);
-	drivetrain.turn(-45, right_angle_turn_KP, right_angle_turn_KI);
-	// NEEDS TUNING HERE
-	drivetrain.moveForTime(1025);
-	drivetrain.turn(45, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.moveIntakeArm();
-	drivetrain.startRunningIntake(true);
-	drivetrain.moveForTime(500);
-	pros::delay(500);
-	drivetrain.moveForTime(230, 60);
-	pros::delay(500);
-	drivetrain.moveForTime(230, 60);
-	pros::delay(500);
-	drivetrain.moveForTime(230, 60);
-	pros::delay(1000);
-	drivetrain.stopIntake();
-	drivetrain.startRunningIntake(true);
-	// NEEDS TUNING HERE
-	drivetrain.moveForTime(-700);
-	drivetrain.moveIntakeArm();
-	drivetrain.turn(-89.5, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.turn(-87, right_angle_turn_KP, right_angle_turn_KI);
-	// NEEDS TUNING HERE
-	drivetrain.moveForTime(600);
-	drivetrain.startRunningOuttake(); // startRunningInstake(true)
-	pros::delay(3500);
-	drivetrain.stopIntake();
-	drivetrain.stopOuttake();
-	drivetrain.drivePID(-4, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
-	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.drivePID(25, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
-	drivetrain.turn(90, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.drivePID(115, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
-	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
-	drivetrain.drivePID(30, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
+	// drivetrain.turnToPoint(45, 40);
+	// drivetrain.startRunningIntake(true);
+	// drivetrain.moveForTime(2100, 45);
+	// drivetrain.stopIntake();
+	// drivetrain.startRunningIntake();
+	// drivetrain.startRunningOuttake(true);
+	// pros::delay(2500);
+	// drivetrain.stopIntake();
+	// drivetrain.stopOuttake();
+	// drivetrain.moveForTime(-500);
+	// drivetrain.turnToPoint(45, -40);
+	// // NEEDS TUNING HERE
+	// drivetrain.moveForTime(2675, 40);
+	// drivetrain.turnToPoint(45, -40);
+	// // NEEDS TUNING HERE
+	// drivetrain.moveForTime(1025);
+	// drivetrain.turnToPoint(45, 40);
+	// drivetrain.moveIntakeArm();
+	// drivetrain.startRunningIntake(true);
+	// drivetrain.moveForTime(500);
+	// pros::delay(500);
+	// drivetrain.moveForTime(230, 60);
+	// pros::delay(500);
+	// drivetrain.moveForTime(230, 60);
+	// pros::delay(500);
+	// drivetrain.moveForTime(230, 60);
+	// pros::delay(1000);
+	// drivetrain.stopIntake();
+	// drivetrain.startRunningIntake(true);
+	// // NEEDS TUNING HERE
+	// drivetrain.moveForTime(-700);
+	// drivetrain.moveIntakeArm();
+	// drivetrain.turn(-89.5, right_angle_turn_KP, right_angle_turn_KI);
+	// drivetrain.turn(-87, right_angle_turn_KP, right_angle_turn_KI);
+	// // NEEDS TUNING HERE
+	// drivetrain.moveForTime(600);
+	// drivetrain.startRunningOuttake(); // startRunningInstake(true)
+	// pros::delay(3500);
+	// drivetrain.stopIntake();
+	// drivetrain.stopOuttake();
+	// drivetrain.drivePID(-4, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
+	// drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
+	// drivetrain.drivePID(25, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
+	// drivetrain.turn(90, right_angle_turn_KP, right_angle_turn_KI);
+	// drivetrain.drivePID(115, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
+	// drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
+	// drivetrain.drivePID(30, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
 
 	/*
 	drivetrain.toggleBotHeight();

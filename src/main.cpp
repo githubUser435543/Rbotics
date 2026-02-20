@@ -550,6 +550,44 @@ void realAuton(Drivetrain& drivetrain){
 	drivetrain.moveForTime(230, 60);
 	pros::delay(500);
 	drivetrain.moveForTime(230, 60);
+	pros::delay(1000);
+	drivetrain.stopIntake();
+	drivetrain.startRunningIntake(true);
+	drivetrain.moveForTime(-500);
+	drivetrain.moveIntakeArm();
+	drivetrain.turn(-89.5, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.turn(-87, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.moveForTime(450);
+	drivetrain.startRunningOuttake(); // startRunningInstake(true)
+	pros::delay(3500);
+	drivetrain.stopIntake();
+	drivetrain.stopOuttake();
+	drivetrain.moveForTime(-500);
+
+	// NEED TO TUNE TURN PID FOR 45
+
+	drivetrain.turn(45, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.startRunningIntake(true);
+	drivetrain.moveForTime(2100, 45);
+	drivetrain.stopIntake();
+	drivetrain.startRunningIntake();
+	drivetrain.startRunningOuttake(true);
+	pros::delay(2500);
+	drivetrain.stopIntake();
+	drivetrain.stopOuttake();
+	drivetrain.moveForTime(-500);
+	drivetrain.turn(-45, right_angle_turn_KP, right_angle_turn_KI);
+	// NEEDS TUNING HERE
+	drivetrain.moveForTime(2675, 40);
+	drivetrain.turn(-45, right_angle_turn_KP, right_angle_turn_KI);
+	// NEEDS TUNING HERE
+	drivetrain.moveForTime(1025);
+	drivetrain.turn(45, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.moveIntakeArm();
+	drivetrain.startRunningIntake(true);
+	drivetrain.moveForTime(500);
+	pros::delay(500);
+	drivetrain.moveForTime(230, 60);
 	pros::delay(500);
 	drivetrain.moveForTime(230, 60);
 	pros::delay(500);
@@ -557,13 +595,24 @@ void realAuton(Drivetrain& drivetrain){
 	pros::delay(1000);
 	drivetrain.stopIntake();
 	drivetrain.startRunningIntake(true);
+	// NEEDS TUNING HERE
 	drivetrain.moveForTime(-700);
 	drivetrain.moveIntakeArm();
 	drivetrain.turn(-89.5, right_angle_turn_KP, right_angle_turn_KI);
 	drivetrain.turn(-87, right_angle_turn_KP, right_angle_turn_KI);
+	// NEEDS TUNING HERE
 	drivetrain.moveForTime(600);
 	drivetrain.startRunningOuttake(); // startRunningInstake(true)
-
+	pros::delay(3500);
+	drivetrain.stopIntake();
+	drivetrain.stopOuttake();
+	drivetrain.drivePID(-4, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
+	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.drivePID(25, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
+	drivetrain.turn(90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.drivePID(115, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
+	drivetrain.turn(-90, right_angle_turn_KP, right_angle_turn_KI);
+	drivetrain.drivePID(30, forward_KP * 0.95, drive_PID_turn_KP, forward_KI, forward_KD);
 
 	/*
 	drivetrain.toggleBotHeight();
